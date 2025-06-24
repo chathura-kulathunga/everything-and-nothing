@@ -11,12 +11,10 @@
 
   <div class="text-center" style="width: 100%; height: 100%;">
     <h2>Sri Lanka Districts</h2>
-
     <!-- Map container with embedded SVG -->
     <div id="map-container">
       <?php include 'assets/map.svg'; ?>
     </div>
-
     <!-- Tooltip that shows district name on hover -->
     <div id="ghost-tooltip"></div>
   </div>
