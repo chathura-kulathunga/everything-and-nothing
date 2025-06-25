@@ -103,3 +103,76 @@ html, body {
     max-height: 100vh;
   }
 }
+
+/* Sarts the district updates */
+/* Popup overlay */
+#district-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  transition: opacity 0.3s ease;
+}
+
+/* Hide popup */
+#district-popup.hidden {
+  display: none;
+}
+
+/* Popup content */
+#popup-content {
+  background: #ffffff;
+  padding: 30px 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(33, 150, 243, 0.4);
+  text-align: center;
+  transform: perspective(1000px) rotateY(0deg);
+  animation: popup-appear 0.8s ease forwards;
+}
+
+#popup-title {
+  color: #2196f3;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+#popup-desc {
+  font-size: 16px;
+  color: #555;
+}
+
+#popup-close {
+  margin-top: 20px;
+  background: #2196f3;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  transition: background 0.3s ease;
+}
+
+#popup-close:hover {
+  background: #1976d2;
+}
+
+/* Popup animation */
+@keyframes popup-appear {
+  0% {
+    transform: perspective(1000px) rotateY(-90deg) scale(0.5);
+    opacity: 0;
+  }
+  100% {
+    transform: perspective(1000px) rotateY(0deg) scale(1);
+    opacity: 1;
+  }
+}

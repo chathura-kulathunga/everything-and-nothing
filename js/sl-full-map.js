@@ -36,8 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const districtName = districtNames[districtId] || `Unknown (${districtId})`;
 
         // On click — you can call another function later
-        d.addEventListener('click', () => {
-            console.log(`You clicked: ${districtName}`);
+                d.addEventListener('click', () => {
+            showPopup(districtName);
         });
 
         // Show tooltip on hover
@@ -64,4 +64,20 @@ document.addEventListener('DOMContentLoaded', () => {
         ghostTooltip.style.left = `${x + 20}px`;
         ghostTooltip.style.top = `${y - 40}px`;
     }
+});
+
+// District popup function
+function showPopup(name) {
+    const popup = document.getElementById('district-popup');
+    const title = document.getElementById('popup-title');
+    const desc = document.getElementById('popup-desc');
+
+    title.textContent = name;
+    desc.textContent = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae.";
+
+    popup.classList.remove('hidden');
+}
+
+document.getElementById('popup-close').addEventListener('click', () => {
+    document.getElementById('district-popup').classList.add('hidden');
 });
