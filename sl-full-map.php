@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,18 +8,32 @@
   <link rel="stylesheet" href="css/sl-full-map.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
 <body>
 
   <div class="text-center" style="width: 100%; height: 100%;">
     <h2>Sri Lanka Districts</h2>
+
     <!-- Map container with embedded SVG -->
     <div id="map-container">
       <?php include 'assets/map.svg'; ?>
     </div>
+
     <!-- Tooltip that shows district name on hover -->
     <div id="ghost-tooltip"></div>
+    
+    <!-- District popup -->
+    <div id="district-popup" class="hidden">
+      <div id="popup-content">
+        <h3 id="popup-title">District Name</h3>
+        <p id="popup-desc">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio.</p>
+        <button id="popup-close">Close</button>
+      </div>
+    </div>
+
   </div>
 
   <script src="js/sl-full-map.js"></script>
 </body>
+
 </html>
