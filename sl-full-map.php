@@ -21,12 +21,23 @@
 
     <!-- Tooltip that shows district name on hover -->
     <div id="ghost-tooltip"></div>
-    
+
     <!-- District popup -->
     <div id="district-popup" class="hidden">
       <div id="popup-content">
         <h3 id="popup-title">District Name</h3>
         <p id="popup-desc">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio.</p>
+
+        <!-- Popup gallery container -->
+        <div id="popup-gallery">
+          <img src="assets/sl-full-map-images/sample1.png" class="popup-image" alt="Sample 1">
+          <img src="assets/sl-full-map-images/sample2.png" class="popup-image" alt="Sample 2">
+          <img src="assets/sl-full-map-images/sample3.png" class="popup-image" alt="Sample 3">
+          <img src="assets/sl-full-map-images/sample4.png" class="popup-image" alt="Sample 4">
+          <img src="assets/sl-full-map-images/sample5.png" class="popup-image" alt="Sample 5">
+          <img src="assets/sl-full-map-images/sample6.png" class="popup-image" alt="Sample 6">
+        </div>
+        
         <button id="popup-close">Close</button>
       </div>
     </div>
