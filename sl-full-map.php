@@ -24,7 +24,9 @@
 
     <!-- District popup -->
     <div id="district-popup" class="hidden">
-      <div id="popup-content">
+  <div id="popup-content">
+    <button id="popup-close" class="popup-close-x">&times;</button>
+        
         <h3 id="popup-title">District Name</h3>
         <p id="popup-desc">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio.</p>
 
@@ -37,11 +39,10 @@
           <img src="assets/sl-full-map-images/sample5.png" class="popup-image" alt="Sample 5">
           <img src="assets/sl-full-map-images/sample6.png" class="popup-image" alt="Sample 6">
         </div>
-        
-        <button id="popup-close">Close</button>
+
       </div>
     </div>
-
+    
   </div>
 
   <script src="js/sl-full-map.js"></script>
