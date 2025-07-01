@@ -1,4 +1,4 @@
-/* Basic reset and fullscreen */
+/* === Basic reset and fullscreen === */
 html, body {
   margin: 0;
   padding: 0;
@@ -13,11 +13,11 @@ html, body {
   font-family: 'Segoe UI', sans-serif;
 }
 
-/* Container for the SVG map */
+/* === Container for the SVG map === */
 #map-container {
   width: 100%;
   max-width: 1000px;
-  height: 95vh; /* was 90vh */
+  height: 95vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -26,18 +26,17 @@ html, body {
   box-sizing: border-box;
 }
 
-/* SVG scaling */
+/* === SVG scaling === */
 #map-container svg {
   width: 100%;
   height: 100%;
-  max-height: 95vh; /* was max-height: 100% */
+  max-height: 95vh;
   object-fit: contain;
   cursor: pointer;
   animation: pulse 6s infinite ease-in-out;
 }
 
-
-/* District paths styling */
+/* === District paths styling === */
 #map-container path {
   fill: #eeeeee;
   stroke: #2196f3;
@@ -45,7 +44,7 @@ html, body {
   filter: drop-shadow(0 0 3px #90caf9);
 }
 
-/* Hover effect for districts */
+/* === Hover effect for districts === */
 #map-container path:hover {
   fill: #2196f3;
   stroke: #ffffff;
@@ -53,14 +52,14 @@ html, body {
   transform: translateY(-2px);
 }
 
-/* Pulse animation */
+/* === Pulse animation === */
 @keyframes pulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.03); }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
   100% { transform: scale(1); }
 }
 
-/* Ghost tooltip */
+/* === Ghost tooltip === */
 #ghost-tooltip {
   position: fixed;
   background: #ffffffee;
@@ -71,7 +70,7 @@ html, body {
   font-weight: 600;
   color: #1976d2;
   pointer-events: none;
-  box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 8px 20px rgba(33,150,243,0.3);
   opacity: 0;
   transition: opacity 0.3s ease, transform 0.3s ease;
   z-index: 9998;
@@ -79,14 +78,13 @@ html, body {
   backdrop-filter: blur(6px);
 }
 
-/* Show tooltip */
+/* === Show tooltip === */
 #ghost-tooltip.show {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
 }
 
-
-/* Responsive design */
+/* === Responsive design === */
 @media (max-width: 768px) {
   #map-container {
     width: 100vw;
@@ -95,7 +93,6 @@ html, body {
     max-height: 100vh;
     padding: 0;
   }
-
   #map-container svg {
     width: 100vw;
     height: 100vh;
@@ -104,68 +101,60 @@ html, body {
   }
 }
 
-/* Sarts the district updates */
-/* Popup overlay */
+/* === Popup overlay === */
 #district-popup {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(10, 10, 10, 0.6);
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(10,10,10,0.6);
   backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
+  opacity: 0; /* start hidden */
+  pointer-events: none; /* block clicks when hidden */
   transition: opacity 0.3s ease;
 }
 
-/* Hide popup */
-#district-popup.hidden {
-  display: none;
+/* === Show popup === */
+#district-popup.visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-/* Popup content */
+/* === Popup content === */
 #popup-content {
+  position: relative;
   background: #ffffff;
   padding: 30px 40px;
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(33, 150, 243, 0.4);
+  box-shadow: 0 10px 30px rgba(33,150,243,0.4);
   text-align: center;
-  transform: perspective(1000px) rotateY(0deg);
+}
+
+/* === Play open animation === */
+#popup-content.opening {
   animation: popup-appear 0.8s ease forwards;
 }
 
+/* === Play close animation === */
+#popup-content.closing {
+  animation: popup-close-anim 0.4s ease forwards;
+}
+
+/* === Popup title & description === */
 #popup-title {
   color: #2196f3;
   font-size: 24px;
   margin-bottom: 10px;
 }
-
 #popup-desc {
   font-size: 16px;
   color: #555;
 }
 
-#popup-close {
-  margin-top: 20px;
-  background: #2196f3;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-  transition: background 0.3s ease;
-}
-
-#popup-close:hover {
-  background: #1976d2;
-}
-
-/* Popup animation */
+/* === Popup opening animation === */
 @keyframes popup-appear {
   0% {
     transform: perspective(1000px) rotateY(-90deg) scale(0.5);
@@ -177,7 +166,19 @@ html, body {
   }
 }
 
-/* === Image gallery inside district popup === */
+/* === Popup closing animation === */
+@keyframes popup-close-anim {
+  0% {
+    transform: perspective(1000px) rotateY(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(1000px) rotateY(20deg) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* === Image gallery inside popup === */
 #popup-gallery {
   margin-top: 20px;
   display: grid;
@@ -185,7 +186,7 @@ html, body {
   gap: 15px;
 }
 
-/* Gallery images styling */
+/* === Gallery images styling === */
 .popup-image {
   width: 100%;
   height: 100px;
@@ -195,7 +196,7 @@ html, body {
   transition: transform 0.6s ease, opacity 0.6s ease;
 }
 
-/* Different animations per image */
+/* === Different animations per image === */
 .popup-image:nth-child(1) { animation: popscale 1s ease-in-out forwards; }
 .popup-image:nth-child(2) { animation: swingrotate 1s ease-in-out forwards; }
 .popup-image:nth-child(3) { animation: fadeinup 1s ease-in-out forwards; }
@@ -203,34 +204,46 @@ html, body {
 .popup-image:nth-child(5) { animation: flipy 1s ease-in-out forwards; }
 .popup-image:nth-child(6) { animation: slideleft 1s ease-in-out forwards; }
 
-/* Animations */
+/* === Image animations === */
 @keyframes popscale {
   from { transform: scale(0.5); opacity: 0; }
-  to   { transform: scale(1); opacity: 1; }
+  to { transform: scale(1); opacity: 1; }
 }
-
 @keyframes swingrotate {
   from { transform: rotate(-15deg); opacity: 0; }
-  to   { transform: rotate(0deg); opacity: 1; }
+  to { transform: rotate(0deg); opacity: 1; }
 }
-
 @keyframes fadeinup {
   from { transform: translateY(30px); opacity: 0; }
-  to   { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(0); opacity: 1; }
 }
-
 @keyframes zoombounce {
   0% { transform: scale(0.5); opacity: 0; }
   50% { transform: scale(1.1); opacity: 1; }
   100% { transform: scale(1); }
 }
-
 @keyframes flipy {
   from { transform: rotateY(90deg); opacity: 0; }
-  to   { transform: rotateY(0deg); opacity: 1; }
+  to { transform: rotateY(0deg); opacity: 1; }
 }
-
 @keyframes slideleft {
   from { transform: translateX(50px); opacity: 0; }
-  to   { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* === Stylish X close button === */
+.popup-close-x {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 28px;
+  background: none;
+  border: none;
+  color: #2196f3;
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+.popup-close-x:hover {
+  color: #1976d2;
+  transform: rotate(90deg) scale(1.2);
 }
