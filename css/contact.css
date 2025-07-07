@@ -1,4 +1,4 @@
-/* Futuristic glass-like background with elegant glow */
+/* Body background */
 body {
   background-color: #0a0a0a;
   font-family: 'Roboto', sans-serif;
@@ -6,20 +6,45 @@ body {
   padding: 0;
 }
 
-/* Footer: glassmorphism effect with cyan neon borders */
+/* Footer style with glass effect and cyan accents */
 .contact-footer {
-  background: rgba(10, 20, 30, 0.8);
+  background: rgba(10, 20, 30, 0.85);
   backdrop-filter: blur(8px);
   border-top: 3px solid #00ffff;
   box-shadow: 0 0 25px rgba(0, 255, 255, 0.5);
-  padding: 3rem 0;
-  color: #e0fafa;
   position: relative;
-  width: 100%;
   overflow: hidden;
+  color: #e0fafa;
+  width: 100%;
 }
 
-/* Brand name: strong, modern glow */
+/* Partners section inside footer */
+.partners-section {
+  border-bottom: 2px solid #00ffff;
+  padding-top: 2rem;
+}
+
+/* Partners title: orbitron + glow */
+.partners-title {
+  font-family: 'Orbitron', sans-serif;
+  color: #00ffff;
+  text-shadow: 0 0 8px #00ffff;
+  font-size: 1.4rem;
+}
+
+/* Partner logos: clean, hover effect */
+.partner-logo {
+  max-height: 40px;
+  filter: brightness(1) drop-shadow(0 0 2px #00ffff);
+  transition: transform 0.4s ease, filter 0.4s ease;
+}
+
+.partner-logo:hover {
+  transform: scale(1.1);
+  filter: brightness(1.4) drop-shadow(0 0 6px #00ffff);
+}
+
+/* Brand */
 .contact-footer .brand {
   font-family: 'Orbitron', sans-serif;
   font-size: 2.2rem;
@@ -28,13 +53,13 @@ body {
   transition: text-shadow 1s ease-in-out;
 }
 
-/* Subtle tagline under brand */
+/* Tagline */
 .contact-footer .tagline {
   font-size: 0.95rem;
   color: #a0f0f0;
 }
 
-/* Section titles with cyan accent */
+/* Headings */
 .contact-footer h5 {
   font-family: 'Orbitron', sans-serif;
   font-weight: 600;
@@ -42,14 +67,14 @@ body {
   margin-bottom: 1rem;
 }
 
-/* Contact list styling */
+/* Contact list */
 .contact-list li {
   margin: 0.5rem 0;
   color: #c2fafa;
   font-size: 1rem;
 }
 
-/* Social icons: stylish glow and hover effect */
+/* Social icons */
 .social-icons a {
   color: #00ffff;
   font-size: 1.6rem;
@@ -64,34 +89,36 @@ body {
   text-shadow: 0 0 15px #00ffff;
 }
 
-/* Copyright: softer cyan glow */
+/* Copyright */
 .copyright {
   color: #66ffff;
   font-size: 0.85rem;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
 }
 
-/* Subtle animated border shine (like a scanline) */
+/* Knight Rider effect */
 .contact-footer::before {
   content: "";
   position: absolute;
   top: 0;
-  left: -150%;
-  width: 150%;
+  left: 0;
+  width: 20%;
   height: 3px;
   background: linear-gradient(90deg, transparent, #00ffff, transparent);
-  animation: scanline 4s linear infinite;
+  animation: knightRider 3s infinite alternate ease-in-out;
 }
 
-/* Keyframes for scanline animation */
-@keyframes scanline {
-  0% { left: -150%; }
-  100% { left: 100%; }
+@keyframes knightRider {
+  0% { left: 0; }
+  100% { left: 80%; }
 }
 
-/* Responsive brand size */
+/* Responsive */
 @media (max-width: 576px) {
   .contact-footer .brand {
     font-size: 1.8rem;
+  }
+  .partner-logo {
+    max-height: 30px;
   }
 }
