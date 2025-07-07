@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FoxC | Contact</title>
-  <!-- Professional, modern fonts and icons -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -13,10 +12,28 @@
 <body>
 
   <footer class="contact-footer text-light">
-    <div class="container py-5">
+    <!-- Our Partners inside footer, top part -->
+    <div class="partners-section container pb-4">
+      <h4 class="partners-title mb-4 text-center">Our Partners</h4>
+      <div class="d-flex flex-wrap justify-content-center align-items-center gap-3">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Singer_logo.svg" alt="Singer" class="partner-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/en/d/d0/Abans_logo.png" alt="Abans" class="partner-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/en/3/36/Softlogic_logo.png" alt="Softlogic" class="partner-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/en/8/87/Damro_logo.png" alt="Damro" class="partner-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/en/7/74/Cargills_logo.png" alt="Cargills" class="partner-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/en/0/06/Arpico_logo.png" alt="Arpico" class="partner-logo">
+        <img src="https://www.javainstitute.edu.lk/wp-content/uploads/2018/06/Logo-JIAT-2018.png" alt="Java Institute" class="partner-logo">
+        <img src="https://seeklogo.com/images/M/minsara-bookshop-logo-697b5c4f5b51d9db1c6ce1d84d99e946.png" alt="Minsara" class="partner-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/9/9d/Toyota_logo.png" alt="Toyota Lanka" class="partner-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/9/9e/BYD_logo.svg" alt="BYD" class="partner-logo">
+      </div>
+    </div>
+
+    <!-- Footer contact part -->
+    <div class="container py-4">
       <div class="row gy-4 align-items-center">
         <div class="col-md-4 text-center text-md-start">
-          <h3 class="brand mb-3">FoxC</h3>
+          <h3 class="brand mb-2">FoxC</h3>
           <p class="small tagline">Where creativity meets innovation.</p>
         </div>
         <div class="col-md-4 text-center">
