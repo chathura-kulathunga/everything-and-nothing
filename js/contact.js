@@ -1,6 +1,14 @@
-// Just a small effect: animate brand text glow on load
+// Animate brand text with gentle pulsing glow
 document.addEventListener('DOMContentLoaded', () => {
   const brand = document.querySelector('.brand');
-  brand.style.transition = 'text-shadow 1.5s ease-in-out';
-  brand.style.textShadow = '0 0 10px #00ffff, 0 0 20px #00ffff';
+
+  // Start with strong glow
+  brand.style.textShadow = '0 0 12px #00ffff, 0 0 25px #00ffff';
+
+  // Pulse every 1.2s
+  setInterval(() => {
+    brand.style.textShadow = brand.style.textShadow === '0 0 12px #00ffff, 0 0 25px #00ffff'
+      ? '0 0 8px #00ffff, 0 0 18px #00ffff'
+      : '0 0 12px #00ffff, 0 0 25px #00ffff';
+  }, 1200);
 });
