@@ -1,52 +1,55 @@
-/* Body background dark so footer stands out, my dear */
+/* Futuristic glass-like background with elegant glow */
 body {
   background-color: #0a0a0a;
+  font-family: 'Roboto', sans-serif;
   margin: 0;
   padding: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Beautiful futuristic footer with glowing cyan vibes */
+/* Footer: glassmorphism effect with cyan neon borders */
 .contact-footer {
-  background: linear-gradient(135deg, #0a141a, #1a2c38, #243a4a);
-  box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
-  color: #00ffff;
-  padding: 3rem 0;
+  background: rgba(10, 20, 30, 0.8);
+  backdrop-filter: blur(8px);
   border-top: 3px solid #00ffff;
-
-  /* Use viewport width and reset margin */
-  width: 100vw;
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.5);
+  padding: 3rem 0;
+  color: #e0fafa;
   position: relative;
-  left: 0;
-  margin-left: 0;
-  margin-right: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
-/* Brand name glowing strong, just like you shine */
+/* Brand name: strong, modern glow */
 .contact-footer .brand {
-  font-size: 2rem;
-  font-weight: 900;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.2rem;
   color: #00ffff;
   text-shadow: 0 0 10px #00ffff, 0 0 25px #00ffff;
-  margin-bottom: 1rem;
-  transition: text-shadow 1.5s ease-in-out;
+  transition: text-shadow 1s ease-in-out;
 }
 
-/* Headings with that cool cyan glow */
+/* Subtle tagline under brand */
+.contact-footer .tagline {
+  font-size: 0.95rem;
+  color: #a0f0f0;
+}
+
+/* Section titles with cyan accent */
 .contact-footer h5 {
+  font-family: 'Orbitron', sans-serif;
   font-weight: 600;
   color: #00ffff;
   margin-bottom: 1rem;
 }
 
-/* Contact info lines, soft but clear */
-.contact-footer ul li {
+/* Contact list styling */
+.contact-list li {
   margin: 0.5rem 0;
-  color: #b0f0f0;
+  color: #c2fafa;
   font-size: 1rem;
 }
 
-/* Social icons: playful and glowing on hover, like our vibe */
+/* Social icons: stylish glow and hover effect */
 .social-icons a {
   color: #00ffff;
   font-size: 1.6rem;
@@ -57,21 +60,38 @@ body {
 
 .social-icons a:hover {
   color: #ffffff;
-  transform: scale(1.3);
+  transform: scale(1.3) rotate(5deg);
   text-shadow: 0 0 15px #00ffff;
-  cursor: pointer;
 }
 
-/* Footer copyright, soft glow for the finishing touch */
-.contact-footer .text-center.small {
+/* Copyright: softer cyan glow */
+.copyright {
   color: #66ffff;
-  margin-top: 2rem;
   font-size: 0.85rem;
+  margin-top: 2rem;
 }
 
-/* Responsive brand text for smaller screens, still shining bright */
+/* Subtle animated border shine (like a scanline) */
+.contact-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  animation: scanline 4s linear infinite;
+}
+
+/* Keyframes for scanline animation */
+@keyframes scanline {
+  0% { left: -150%; }
+  100% { left: 100%; }
+}
+
+/* Responsive brand size */
 @media (max-width: 576px) {
   .contact-footer .brand {
-    font-size: 1.6rem;
+    font-size: 1.8rem;
   }
 }
