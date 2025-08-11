@@ -69,24 +69,38 @@ $months = ["January","February","March","April","May","June","July","August","Se
   </main>
 
   <!-- Detail Modal -->
-  <div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalTitle">Event</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body d-flex gap-3">
-          <img id="modalImg" src="" alt="" class="img-fluid rounded-2" style="max-width:40%" />
-          <div>
-            <p id="modalMonth" class="mb-1 text-muted"></p>
-            <p id="modalDistrict" class="mb-2"></p>
-            <p id="modalDesc"></p>
+<div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="modal-header bg-primary text-white border-0">
+        <h5 class="modal-title fw-bold" id="modalTitle">Event</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body p-4">
+        <div class="row g-4 align-items-center">
+          <div class="col-md-5">
+            <img id="modalImg" src="" alt="" class="img-fluid rounded-3 shadow-sm" />
+          </div>
+          <div class="col-md-7">
+            <p id="modalMonth" class="mb-1 text-primary fw-semibold"></p>
+            <p id="modalDistrict" class="mb-2 text-muted"></p>
+            <p id="modalDesc" class="lead"></p>
           </div>
         </div>
       </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+      </div>
     </div>
   </div>
+</div>
+
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>const SAMPLE_EVENTS = <?= json_encode($events, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) ?>;</script>
