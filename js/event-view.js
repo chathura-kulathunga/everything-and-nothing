@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       const ev = SAMPLE_EVENTS.find(x=>x.id===id);
       if(!ev) return;
       document.getElementById('modalTitle').textContent = ev.name;
-      document.getElementById('modalImg').src = `assets/event-images/${ev.img}`;
+      document.getElementById('modalImg').src = `${ev.img}`;
       document.getElementById('modalImg').alt = ev.name;
       document.getElementById('modalMonth').textContent = ev.month;
       document.getElementById('modalDistrict').textContent = ev.district;
