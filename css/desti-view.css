@@ -1,0 +1,24 @@
+/* ------------------------------------------------------------- */
+/* <!-- FILE: desti-view.css --> */
+/* Page stylesheet: desti-view.css */
+
+/* Keep styles light — Bootstrap covers most. Use classes only. */
+
+body { background: #f8fafc; }
+
+#filters .activity-toggle.active {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+.destination-card .card-img-top{ height: 180px; object-fit: cover; }
+
+/* small responsive tweaks */
+@media (max-width: 576px){
+  .destination-card .card-img-top{ height: 140px; }
+}
+
+/* subtle shadow on matching cards */
+.destination-card.match { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(13,110,253,0.08); }
+
