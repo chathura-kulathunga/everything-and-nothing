@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------- */
-// <!-- FILE: desti-view.js -->
+/* FILE: desti-view.js */
 // Page behaviour: desti-view.js
-// Adds client-side filtering/sorting and modal details rendering.
+// Adds client-side filtering/sorting, modal details rendering, favorites, saved filters, counts, share links.
 
 document.addEventListener('DOMContentLoaded', function () {
   const cards = Array.from(document.querySelectorAll('.destination-card'));
@@ -10,9 +10,52 @@ document.addEventListener('DOMContentLoaded', function () {
   const difficultySelect = document.getElementById('difficultySelect');
   const activityButtons = Array.from(document.querySelectorAll('.activity-toggle'));
   const clearBtn = document.getElementById('clearFilters');
+  const saveBtn = document.getElementById('saveFilters');
   const resultCount = document.getElementById('resultCount');
   const resultsGrid = document.getElementById('resultsGrid');
   let activeActivities = new Set();
+
+  const storageKey = 'explorelanka.filters.v1';
+  const favKey = 'explorelanka.favs.v1';
+
+  // read URL params to prefill filters (shareable links)
+  function readParams(){
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('q')) searchInput.value = p.get('q');
+    if (p.get('region')) regionSelect.value = p.get('region');
+    if (p.get('difficulty')) difficultySelect.value = p.get('difficulty');
+    if (p.get('activities')){
+      p.get('activities').split(',').forEach(a=>{
+        const btn = activityButtons.find(b=>b.dataset.activity===a);
+        if (btn){ btn.classList.add('active'); activeActivities.add(a); }
+      });
+    }
+  }
+
+  // apply saved filters from localStorage
+  function loadSaved(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      if (saved){
+        searchInput.value = saved.q || '';
+        regionSelect.value = saved.region || 'any';
+        difficultySelect.value = saved.difficulty || 'any';
+        (saved.activities || []).forEach(a=>{
+          const btn = activityButtons.find(b=>b.dataset.activity===a);
+          if (btn){ btn.classList.add('active'); activeActivities.add(a); }
+        });
+      }
+    }catch(e){ console.warn('Could not load saved filters', e); }
+  }
+
+  // save filters
+  saveBtn.addEventListener('click', ()=>{
+    const payload = { q: searchInput.value, region: regionSelect.value, difficulty: difficultySelect.value, activities: Array.from(activeActivities) };
+    localStorage.setItem(storageKey, JSON.stringify(payload));
+    // tiny UI feedback
+    saveBtn.textContent = 'Saved';
+    setTimeout(()=> saveBtn.textContent = 'Save', 1500);
+  });
 
   function normalize(s){ return String(s||'').toLowerCase(); }
 
@@ -52,6 +95,20 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
     resultCount.textContent = visible;
+    updateActivityCounts();
+  }
+
+  // update small counts on activity buttons so user knows how many results per activity
+  function updateActivityCounts(){
+    activityButtons.forEach(btn => {
+      const activity = btn.dataset.activity;
+      let count = 0;
+      for (let c of cards){
+        const acts = (c.dataset.activities||'').toLowerCase().split(',').map(x=>x.trim());
+        if (acts.includes(activity)) count++;
+      }
+      btn.querySelector('.activity-count').textContent = count;
+    });
   }
 
   // toggle activity buttons
@@ -82,8 +139,26 @@ document.addEventListener('DOMContentLoaded', function () {
     render();
   });
 
+  // Favorites
+  function loadFavs(){
+    try{ return new Set(JSON.parse(localStorage.getItem(favKey) || '[]')); }catch(e){ return new Set(); }
+  }
+  function saveFavs(set){ localStorage.setItem(favKey, JSON.stringify(Array.from(set))); }
+  const favs = loadFavs();
+  document.querySelectorAll('.btn-fav').forEach(btn => {
+    const card = btn.closest('.destination-card');
+    const id = card.dataset.name;
+    if (favs.has(id)) btn.textContent = '♥';
+    btn.addEventListener('click', ()=>{
+      if (favs.has(id)){ favs.delete(id); btn.textContent = '♡'; }
+      else { favs.add(id); btn.textContent = '♥'; }
+      saveFavs(favs);
+    });
+  });
+
   // details modal
   const modal = document.getElementById('detailModal');
+  let map; let mapMarker;
   modal.addEventListener('show.bs.modal', function (ev) {
     const button = ev.relatedTarget; // button that triggered
     const card = button.closest('.destination-card');
@@ -93,12 +168,61 @@ document.addEventListener('DOMContentLoaded', function () {
     const activities = card.dataset.activities;
     const duration = card.dataset.duration || 'N/A';
     const desc = card.querySelector('.card-text')?.textContent || '';
+    const img = card.querySelector('img')?.src || '';
+    const lat = parseFloat(card.dataset.lat || '');
+    const lng = parseFloat(card.dataset.lng || '');
 
-    const content = `\n      <div class=\"row\">\n        <div class=\"col-md-5\">\n          <img src=\"${card.querySelector('img')?.src}\" class=\"img-fluid rounded\" alt=\"${name}\">\n        </div>\n        <div class=\"col-md-7\">\n          <h3>${name}</h3>\n          <p class=\"small text-muted\">${desc}</p>\n          <p><strong>Region:</strong> ${region} &nbsp; • &nbsp; <strong>Difficulty:</strong> ${difficulty} &nbsp; • &nbsp; <strong>Duration:</strong> ${duration}</p>\n          <p><strong>Activities:</strong> ${activities.split(',').map(a=>a.trim()).filter(Boolean).join(', ')}</p>\n        </div>\n      </div>\n    `;
+    const content = `
+      <div class=\"row\">
+        <div class=\"col-md-5\">
+          <img src=\"${img}\" class=\"img-fluid rounded\" alt=\"${name}\">
+        </div>
+        <div class=\"col-md-7\">
+          <h3>${name}</h3>
+          <p class=\"small text-muted\">${desc}</p>
+          <p><strong>Region:</strong> ${region} &nbsp; • &nbsp; <strong>Difficulty:</strong> ${difficulty} &nbsp; • &nbsp; <strong>Duration:</strong> ${duration}</p>
+          <p><strong>Activities:</strong> ${activities.split(',').map(a=>a.trim()).filter(Boolean).join(', ')}</p>
+        </div>
+      </div>
+    `;
 
     modal.querySelector('#detailModalLabel').textContent = name;
     modal.querySelector('#modalContent').innerHTML = content;
     modal.querySelector('#modalMoreLink').href = '#'; // replace with real link when available
+
+    // show small map if coordinates present
+    const mapEl = document.getElementById('modalMap');
+    if (!isNaN(lat) && !isNaN(lng)){
+      mapEl.style.display = 'block';
+      setTimeout(()=>{
+        if (!map){
+          map = L.map('modalMap', { scrollWheelZoom: false }).setView([lat, lng], 10);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(map);
+          mapMarker = L.marker([lat, lng]).addTo(map);
+        } else {
+          map.invalidateSize();
+          map.setView([lat, lng], 10);
+          if (mapMarker) mapMarker.setLatLng([lat, lng]);
+        }
+      }, 200);
+    } else {
+      mapEl.style.display = 'none';
+    }
+
+    // wire copy link button
+    document.getElementById('copyLinkBtn').onclick = function (){
+      const params = new URLSearchParams();
+      params.set('q', searchInput.value || '');
+      params.set('region', regionSelect.value || 'any');
+      params.set('difficulty', difficultySelect.value || 'any');
+      if (activeActivities.size) params.set('activities', Array.from(activeActivities).join(','));
+      params.set('dest', name);
+      const url = window.location.origin + window.location.pathname + '?' + params.toString();
+      navigator.clipboard.writeText(url).then(()=>{
+        this.textContent = 'Copied';
+        setTimeout(()=> this.textContent = 'Copy link', 1200);
+      });
+    };
   });
 
   // basic sorting (name / difficulty)
@@ -112,6 +236,19 @@ document.addEventListener('DOMContentLoaded', function () {
     sorted.forEach(c => resultsGrid.appendChild(c));
   });
 
-  // initial render
+  // keyboard shortcut: press / to focus search
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === '/'){
+      if (document.activeElement !== searchInput){
+        e.preventDefault(); searchInput.focus();
+      }
+    }
+  });
+
+  // initialize: load from URL or storage
+  readParams();
+  loadSaved();
   render();
+  updateActivityCounts();
+
 });

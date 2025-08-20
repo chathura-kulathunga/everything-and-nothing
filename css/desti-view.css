@@ -1,24 +1,30 @@
 /* ------------------------------------------------------------- */
-/* <!-- FILE: desti-view.css --> */
+/* FILE: desti-view.css */
 /* Page stylesheet: desti-view.css */
 
-/* Keep styles light — Bootstrap covers most. Use classes only. */
-
+:root{ --primary:#0d6efd; }
 body { background: #f8fafc; }
+.bg-gradient-primary{ background: linear-gradient(90deg, #0d6efd 0%, #6610f2 100%); }
 
-#filters .activity-toggle.active {
-  background-color: #0d6efd;
+#filters .activity-toggle.active{
+  background-color: var(--primary);
   color: white;
-  border-color: #0d6efd;
+  border-color: var(--primary);
 }
 
-.destination-card .card-img-top{ height: 180px; object-fit: cover; }
+.activity-count{ font-size: .7rem; opacity: .8; margin-left:6px; }
 
-/* small responsive tweaks */
+.destination-card .card-img-top{ height: 180px; object-fit: cover; }
+.destination-card .btn-fav{ padding: .2rem .5rem; }
+
 @media (max-width: 576px){
   .destination-card .card-img-top{ height: 140px; }
 }
 
-/* subtle shadow on matching cards */
-.destination-card.match { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(13,110,253,0.08); }
+.destination-card.match{ transform: translateY(-4px); box-shadow: 0 10px 20px rgba(13,110,253,0.08); }
 
+/* small visual for saved filters */
+.saved-pill{ display:inline-block; padding: .18rem .5rem; border-radius: 999px; background:#e9f7ef; color:#06693c; font-size:.8rem; }
+
+/* subtle focus for keyboard users */
+.activity-toggle:focus{ box-shadow: 0 0 0 .15rem rgba(13,110,253,.25); }
