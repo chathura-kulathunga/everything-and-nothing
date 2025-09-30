@@ -14,12 +14,16 @@
   <div class="container text-center flex-grow-1">
     <h1 class="mt-5">🌍 SL Interactive Portal</h1>
     <div class="desc">Explore Sri Lanka with powerful visual tools</div>
-    <div class="mt-4">
+    <div class="mt-4 button-group">
       <a href="sl-full-map.php">
         <button class="glow-btn">Launch Full Map</button>
       </a>
+      <a href="pages/desti-view.php">
+        <button class="desti-btn">View Desti Page</button>
+      </a>
     </div>
   </div>
+
   <?php include 'contact.php'; ?>
 </body>
 
