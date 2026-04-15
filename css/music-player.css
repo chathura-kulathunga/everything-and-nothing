@@ -3,26 +3,48 @@ body {
 }
 
 .player {
-  border-radius: 15px;
+  border-radius: 20px;
+}
+
+#coverArt {
+  max-height: 220px;
+  border: 3px solid #ffc107;
+  transition: transform 0.3s;
+}
+
+#coverArt:hover {
+  transform: scale(1.05);
+}
+
+.controls .btn {
+  font-size: 1.5rem;
+  border-radius: 50%;
 }
 
 .list-group-item {
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  border: none;
 }
 
 .list-group-item:hover {
   background-color: #333 !important;
 }
 
-#coverArt {
-  border: 3px solid #ffc107;
-}
-
-.controls .btn {
-  font-size: 1.5rem;
+.list-group-item.active {
+  background-color: #ffc107 !important;
+  color: #000 !important;
+  font-weight: bold;
 }
 
 .volume i {
   font-size: 1.2rem;
+}
+
+.progress {
+  background-color: #333;
+}
+
+.progress-bar {
+  transition: width 0.1s linear;
 }
