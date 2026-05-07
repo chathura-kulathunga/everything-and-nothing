@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitive Bias Matrix</title>
+    
+    <!-- Bootstrap 5 CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts: Playfair Display (Headers) & Inter (Body) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        /* 
+         * Core Design System
+         * Deep blacks, sharp edges, muted gold accents.
+         */
+        :root {
+            --bg-color: #070707;
+            --card-bg: #121212;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --accent-gold: #c5a059;
+            --border-color: #222222;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Typography */
+        h1, h2, h3, .serif-text {
+            font-family: 'Playfair Display', serif;
+            letter-spacing: 0.5px;
+        }
+
+        .header-section {
+            padding: 5rem 0 3rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 3rem;
+        }
+
+        .header-title {
+            color: var(--accent-gold);
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header-subtitle {
+            color: var(--text-muted);
+            font-weight: 300;
+            margin-top: 1rem;
+        }
+
+        /* 
+         * Flashcard 3D Flip Mechanics
+         */
+        .flip-card-container {
+            perspective: 1000px; /* Gives the 3D depth */
+            margin-bottom: 2rem;
+        }
+
+        .flip-card {
+            background-color: transparent;
+            width: 100%;
+            height: 320px;
+            cursor: pointer;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        /* Trigger flip on hover or focus */
+        .flip-card-container:hover .flip-card-inner,
+        .flip-card:focus .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* Safari */
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            /* Sharp edges */
+            border-radius: 0; 
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+        }
+
+        /* Front of card styling */
+        .flip-card-front {
+            z-index: 2;
+        }
+
+        .flip-card-front h3 {
+            color: var(--accent-gold);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .flip-card-front p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        /* Back of card styling */
+        .flip-card-back {
+            transform: rotateY(180deg);
+            background-color: #0f0f0f; /* Slightly darker to distinguish back */
+            border-color: var(--accent-gold); /* Highlight border on flip */
+        }
+
+        .flip-card-back p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 0;
+            text-align: left;
+        }
+
+        .card-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-gold);
+            margin-bottom: 1rem;
+            align-self: flex-start;
+        }
+
+        .example-text {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--border-color);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 2rem 0;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header-section text-center">
+        <div class="container">
+            <h1 class="header-title">Cognitive Bias Matrix</h1>
+            <p class="header-subtitle">Hover or tap cards to reveal the mechanics of human error.</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- The grid container where JS will inject the flashcards -->
+        <div class="row" id="flashcard-grid">
+            <!-- Cards render here -->
+        </div>
+    </main>
+
+    <footer>
+        <div class="container serif-text">
+            SYSTEM // PSYCHOLOGY // BEHAVIOR
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS (Optional, but included for complete framework functionality) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        /**
+         * Database of Cognitive Biases.
+         * Structured as an array of objects for easy expansion.
+         * Real-world examples focus on logic, engineering, and decision-making.
+         */
+        const biasData = [
+            {
+                title: "Dunning-Kruger Effect",
+                shortDesc: "The illusion of competence.",
+                definition: "A cognitive bias in which people with limited competence in a particular domain overestimate their abilities.",
+                example: "Scenario: A novice reads one article on system architecture and confidently dictates a flawed database schema to senior developers."
+            },
+            {
+                title: "Sunk Cost Fallacy",
+                shortDesc: "Irrational commitment.",
+                definition: "The phenomenon whereby a person is reluctant to abandon a strategy or course of action because they have invested heavily in it.",
+                example: "Scenario: Refusing to abandon a fundamentally broken codebase because 'we already spent three months writing it.'"
+            },
+            {
+                title: "Confirmation Bias",
+                shortDesc: "Seeing what you want to see.",
+                definition: "The tendency to search for, interpret, favor, and recall information in a way that confirms or supports one's prior beliefs.",
+                example: "Scenario: Ignoring failing test logs because you strongly believe your new algorithm implementation is flawless."
+            },
+            {
+                title: "Anchoring Effect",
+                shortDesc: "Relying on the first piece of info.",
+                definition: "A cognitive bias where an individual depends too heavily on an initial piece of information offered to make subsequent judgments.",
+                example: "Scenario: Estimating a complex UI task will take 2 days simply because a colleague casually threw out '2 days' during a meeting."
+            },
+            {
+                title: "Halo Effect",
+                shortDesc: "One trait overshadows the rest.",
+                definition: "The tendency for positive impressions of a person, company, brand, or product in one area to positively influence one's opinion or feelings in other areas.",
+                example: "Scenario: Assuming an individual is an exceptional backend engineer purely because they wear expensive suits and speak confidently."
+            },
+            {
+                title: "Availability Heuristic",
+                shortDesc: "If you can think of it, it must be important.",
+                definition: "A mental shortcut that relies on immediate examples that come to a given person's mind when evaluating a specific topic, concept, method or decision.",
+                example: "Scenario: Choosing a specific tech stack for a new project solely because you saw three YouTube videos about it yesterday, ignoring actual project requirements."
+            }
+        ];
+
+        /**
+         * Function to generate HTML for a single card
+         */
+        function createCardHTML(bias) {
+            return `
+                <div class="col-12 col-md-6 col-lg-4 flip-card-container">
+                    <div class="flip-card" tabindex="0">
+                        <div class="flip-card-inner">
+                            <!-- Front -->
+                            <div class="flip-card-front">
+                                <h3>${bias.title}</h3>
+                                <p>${bias.shortDesc}</p>
+                            </div>
+                            <!-- Back -->
+                            <div class="flip-card-back">
+                                <span class="card-label">Definition</span>
+                                <p>${bias.definition}</p>
+                                <div class="example-text">
+                                    <strong>Example:</strong> ${bias.example}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render all cards to the DOM on load
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            const grid = document.getElementById('flashcard-grid');
+            let htmlContent = '';
+            
+            biasData.forEach(bias => {
+                htmlContent += createCardHTML(bias);
+            });
+            
+            grid.innerHTML = htmlContent;
+        });
+    </script>
+
+</body>
+</html>
