@@ -21,6 +21,9 @@
       <a href="pages/desti-view.php">
         <button class="desti-btn">View Desti Page</button>
       </a>
+      <a href="biases.html">
+        <button class="desti-btn">Biases</button>
+      </a>
     </div>
   </div>
 
