@@ -24,6 +24,9 @@
       <a href="biases.html">
         <button class="desti-btn">Biases</button>
       </a>
+      <a href="matrix.html">
+        <button class="desti-btn">Matrix</button>
+      </a>
     </div>
   </div>
 
