@@ -27,6 +27,9 @@
       <a href="matrix.html">
         <button class="desti-btn">Matrix</button>
       </a>
+      <a href="zanshin-telemetry.html">
+        <button class="desti-btn">Zanshin Telemetry</button>
+      </a>
     </div>
   </div>
 
