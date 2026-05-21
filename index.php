@@ -21,6 +21,15 @@
       <a href="pages/desti-view.php">
         <button class="desti-btn">View Desti Page</button>
       </a>
+      <a href="biases.html">
+        <button class="desti-btn">Biases</button>
+      </a>
+      <a href="matrix.html">
+        <button class="desti-btn">Matrix</button>
+      </a>
+      <a href="zanshin-telemetry.html">
+        <button class="desti-btn">Zanshin Telemetry</button>
+      </a>
     </div>
   </div>
 

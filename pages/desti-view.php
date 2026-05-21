@@ -115,7 +115,7 @@
 
       <div class="col-12 col-sm-6 col-lg-4 destination-card" data-name="Adam's Peak" data-region="central" data-difficulty="hard" data-activities="hiking,climbing,religious,photospot,camping" data-duration="1-day" data-lat="7.2906" data-lng="80.5490">
         <div class="card h-100 shadow-sm">
-          <img src="images/adams_peak.jpg" loading="lazy" class="card-img-top" alt="Adam's Peak">
+          <img src="../assets/desti-images/adams-peak.avif" loading="lazy" class="card-img-top" alt="Adam's Peak">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Adam's Peak</h5>
             <p class="card-text small text-muted mb-2">Known for sunrise pilgrimage & tough hike</p>
@@ -134,7 +134,7 @@
 
       <div class="col-12 col-sm-6 col-lg-4 destination-card" data-name="Hikkaduwa" data-region="southern" data-difficulty="easy" data-activities="surfing,diving,snorkeling,food,beach,photospot" data-duration="day-trip" data-lat="6.1609" data-lng="80.1010">
         <div class="card h-100 shadow-sm">
-          <img src="images/hikkaduwa.jpg" loading="lazy" class="card-img-top" alt="Hikkaduwa">
+          <img src="../assets/desti-images/hikkaduwa.jpg" loading="lazy" class="card-img-top" alt="Hikkaduwa">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Hikkaduwa</h5>
             <p class="card-text small text-muted mb-2">Beaches, reef diving and lively markets</p>
@@ -153,7 +153,7 @@
 
       <div class="col-12 col-sm-6 col-lg-4 destination-card" data-name="Knuckles Range" data-region="central" data-difficulty="moderate" data-activities="hiking,birdwatching,camping,photospot,waterfalls" data-duration="2-days" data-lat="7.4667" data-lng="80.6500">
         <div class="card h-100 shadow-sm">
-          <img src="images/knuckles.jpg" loading="lazy" class="card-img-top" alt="Knuckles Range">
+          <img src="../assets/desti-images/knuckles.jpg" loading="lazy" class="card-img-top" alt="Knuckles Range">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Knuckles Range</h5>
             <p class="card-text small text-muted mb-2">Cloud forests, trails & rare birds</p>
