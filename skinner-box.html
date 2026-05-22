@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT OUROBOROS // SYNTHETIC DOPAMINE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --text: #ffffff;
+            --gold: #c5a059;
+            --rose: #e0115f;
+            --ui-dim: #222222;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- CRT & Scanline Effects --- */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* --- UI Overlay --- */
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .stat-box {
+            border-left: 2px solid var(--gold);
+            padding-left: 10px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--gold);
+            letter-spacing: 2px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--text);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        /* --- Combo Meter (The Flow State) --- */
+        .combo-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--ui-dim);
+            z-index: 10;
+        }
+
+        #combo-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--rose);
+            box-shadow: 0 0 15px var(--rose);
+            transition: width 0.1s linear;
+        }
+
+        /* --- The Core Node --- */
+        .core-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+
+        .core-btn {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid var(--gold);
+            color: var(--gold);
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            cursor: pointer;
+            outline: none;
+            box-shadow: inset 0 0 20px rgba(197, 160, 89, 0.2), 0 0 20px rgba(197, 160, 89, 0.2);
+            transition: transform 0.05s, box-shadow 0.1s, border-color 0.1s;
+        }
+
+        .core-btn:active {
+            transform: scale(0.9);
+            border-color: var(--rose);
+            color: var(--rose);
+            box-shadow: inset 0 0 50px rgba(224, 17, 95, 0.5), 0 0 50px rgba(224, 17, 95, 0.5);
+        }
+
+        /* --- Dynamic Physics Canvas --- */
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* --- Glitch / Overdrive States --- */
+        .overdrive {
+            animation: overdrive-shake 0.2s infinite;
+        }
+
+        @keyframes overdrive-shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            25% { transform: translate(-1px, -2px) rotate(-1deg); }
+            50% { transform: translate(-3px, 0px) rotate(1deg); }
+            75% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -1px) rotate(0deg); }
+        }
+
+        .critical-flash {
+            position: absolute;
+            inset: 0;
+            background: var(--text);
+            z-index: 99;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="critical-flash" id="flash"></div>
+    <div class="combo-container"><div id="combo-bar"></div></div>
+
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="hud">
+        <div class="stat-box">
+            <div class="stat-label">NEURAL YIELD</div>
+            <div class="stat-value" id="score">0</div>
+        </div>
+        <div class="stat-box" style="text-align: right; border-left: none; border-right: 2px solid var(--rose); padding-right: 10px;">
+            <div class="stat-label">FLOW MULTIPLIER</div>
+            <div class="stat-value" id="multiplier" style="color: var(--rose);">x1.0</div>
+        </div>
+    </div>
+
+    <div class="core-container" id="core-wrapper">
+        <button class="core-btn" id="core" onmousedown="triggerProtocol(event)">ENGAGE</button>
+    </div>
+
+    <script>
+        // --- System State ---
+        let score = 0;
+        let combo = 0;
+        let comboTimer = 0;
+        const maxComboTimer = 100; // Time before combo drops
+        let audioCtx;
+
+        // --- DOM Elements ---
+        const elScore = document.getElementById('score');
+        const elMultiplier = document.getElementById('multiplier');
+        const elComboBar = document.getElementById('combo-bar');
+        const elCoreWrapper = document.getElementById('core-wrapper');
+        const elFlash = document.getElementById('flash');
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Canvas Setup ---
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- Procedural Audio Engine (Web Audio API) ---
+        // Generates punchy, addictive cyber-sounds using pure math.
+        function playSynth(type, freq, decay) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = type; // 'sine', 'square', 'sawtooth'
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            // Pitch drop effect for "punch"
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.1, audioCtx.currentTime + decay);
+
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + decay);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + decay);
+        }
+
+        // --- Particle Physics System ---
+        let particles = [];
+        class Particle {
+            constructor(x, y, isCrit) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = isCrit ? (Math.random() * 15 + 5) : (Math.random() * 5 + 2);
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.03 + 0.01;
+                this.color = isCrit ? '#e0115f' : '#c5a059'; // Rose-gem on critical hit
+                this.size = isCrit ? Math.random() * 4 + 2 : Math.random() * 2 + 1;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.2; // Gravity
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // --- The Core Mechanic (The Skinner Box Trigger) ---
+        function triggerProtocol(e) {
+            // 1. Math & Multipliers
+            combo++;
+            comboTimer = maxComboTimer;
+            let multiplier = 1 + (combo * 0.1);
+            if (multiplier > 10) multiplier = 10; // Cap at 10x
+            
+            // Variable Ratio (Slot Machine) Mechanic - 10% chance for a "CRITICAL"
+            const isCrit = Math.random() < 0.1;
+            const yieldAmt = isCrit ? Math.floor(100 * multiplier) : Math.floor(10 * multiplier);
+            score += yieldAmt;
+
+            // 2. DOM Updates
+            elScore.innerText = score.toLocaleString();
+            elMultiplier.innerText = `x${multiplier.toFixed(1)}`;
+            if(multiplier >= 5) elMultiplier.style.textShadow = "0 0 10px var(--rose)";
+
+            // 3. Audio / Visual Feedback (Juice)
+            if (isCrit) {
+                // Critical Hit: Massive sensory spike
+                playSynth('square', 600, 0.5);
+                playSynth('sawtooth', 300, 0.6);
+                elFlash.style.opacity = 0.8;
+                setTimeout(() => elFlash.style.opacity = 0, 50);
+                triggerScreenShake(20);
+                spawnParticles(e.clientX, e.clientY, 50, true);
+            } else {
+                // Standard Hit: satisfying click
+                playSynth('sine', 800 + (combo * 10), 0.1);
+                triggerScreenShake(2 + (multiplier/2));
+                spawnParticles(e.clientX, e.clientY, 10, false);
+            }
+
+            // Keyboard support (Spacebar smashing)
+            if(!e.clientX) {
+                const rect = document.getElementById('core').getBoundingClientRect();
+                spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, isCrit ? 50 : 10, isCrit);
+            }
+        }
+
+        // Allow spacebar to trigger it rapidly
+        document.addEventListener('keydown', (e) => {
+            if(e.code === 'Space') {
+                e.preventDefault(); // Stop scrolling
+                const btn = document.getElementById('core');
+                btn.classList.add('active-state');
+                triggerProtocol({});
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            if(e.code === 'Space') {
+                document.getElementById('core').classList.remove('active-state');
+            }
+        });
+
+        // --- Helpers ---
+        function spawnParticles(x, y, count, isCrit) {
+            for(let i=0; i<count; i++) particles.push(new Particle(x, y, isCrit));
+        }
+
+        function triggerScreenShake(intensity) {
+            if (intensity > 5) document.body.classList.add('overdrive');
+            document.body.style.transform = `translate(${(Math.random() - 0.5) * intensity}px, ${(Math.random() - 0.5) * intensity}px)`;
+            setTimeout(() => {
+                document.body.style.transform = 'translate(0,0)';
+                document.body.classList.remove('overdrive');
+            }, 50);
+        }
+
+        // --- Main Game Loop ---
+        function loop() {
+            // Particle physics
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+
+            // Zanshin/Flow State Drain Mechanics
+            if (comboTimer > 0) {
+                comboTimer -= 0.5; // Drain rate
+                elComboBar.style.width = `${comboTimer}%`;
+            } else {
+                // Loss of Flow State
+                if (combo > 0) {
+                    combo = 0;
+                    elMultiplier.innerText = `x1.0`;
+                    elMultiplier.style.textShadow = "none";
+                    playSynth('sawtooth', 100, 0.5); // Negative feedback sound
+                }
+            }
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+    </script>
+</body>
+</html>
