@@ -30,6 +30,9 @@
       <a href="zanshin-telemetry.html">
         <button class="desti-btn">Zanshin Telemetry</button>
       </a>
+      <a href="skinner-box.html">
+        <button class="desti-btn">Skinner Box</button>
+      </a>
     </div>
   </div>
 
