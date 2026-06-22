@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATTENTION OVERLORD // SYSTEM BREACH</title>
+    
+    <!-- Bootstrap 5 & External Assets -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:wght@900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #030303;
+            --card: rgba(15, 15, 15, 0.8);
+            --gold: #d4af37;
+            --rose: #e0115f; 
+            --glow: rgba(224, 17, 95, 0.3);
+            --text: #e0e0e0;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 50% 50%, #0a0a0a 0%, #030303 100%);
+        }
+
+        /* --- System Loading Overlay --- */
+        #loader {
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        /* --- Header Aesthetic --- */
+        .header-box {
+            padding: 6rem 0 3rem;
+            text-align: center;
+            border-bottom: 1px solid #1a1a1a;
+            position: relative;
+        }
+
+        .system-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2rem, 8vw, 4.5rem);
+            color: var(--gold);
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+            margin: 0;
+        }
+
+        /* --- Neural Stream (API Section) --- */
+        .neural-ticker {
+            background: rgba(224, 17, 95, 0.1);
+            border-bottom: 1px solid var(--rose);
+            padding: 10px 0;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .ticker-content {
+            display: inline-block;
+            animation: ticker 30s linear infinite;
+            color: var(--rose);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* --- Addictive Grid Cards --- */
+        .exploit-card {
+            background: var(--card);
+            border: 1px solid #222;
+            padding: 2.5rem;
+            height: 100%;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .exploit-card:hover {
+            border-color: var(--rose);
+            box-shadow: 0 0 30px var(--glow);
+        }
+
+        .exploit-card::before {
+            content: "ID: " attr(data-id);
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 10px;
+            color: var(--rose);
+        }
+
+        .card-title {
+            color: var(--gold);
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            transform: translateZ(30px);
+        }
+
+        /* --- Dopamine Button --- */
+        .dopamine-trigger {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gold);
+            color: black;
+            padding: 15px 40px;
+            font-weight: 900;
+            border: none;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+            transition: 0.2s;
+            z-index: 1000;
+        }
+
+        .dopamine-trigger:active {
+            transform: translateX(-50%) scale(0.9);
+            background: var(--rose);
+            color: white;
+        }
+
+        .reward-pop {
+            position: fixed;
+            color: var(--rose);
+            font-weight: bold;
+            pointer-events: none;
+            animation: float-up 1s forwards;
+            z-index: 2000;
+        }
+
+        @keyframes float-up {
+            to { transform: translateY(-100px); opacity: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <h2 id="boot-text" style="color: var(--gold)">ESTABLISHING CONNECTION...</h2>
+    </div>
+
+    <div class="neural-ticker">
+        <div class="ticker-content" id="stream-content">
+            FETCHING LIVE SUBLIMINAL DATA... // ENCRYPTING NEURAL PATHWAYS... // SYSTEM BREACH IN PROGRESS...
+        </div>
+    </div>
+
+    <div class="container">
+        <header class="header-box">
+            <h1 class="system-title">Attention Overlord</h1>
+            <p style="letter-spacing: 5px; color: #555;">PSYCHO-ENGINEERING INTERFACE</p>
+        </header>
+
+        <div class="row g-5 py-5" id="main-grid">
+            <!-- Cards Injected via JS -->
+        </div>
+    </div>
+
+    <button class="dopamine-trigger" onclick="triggerDopamine()">COLLECT REWARD</button>
+
+    <script>
+        // 1. Initial Boot Sequence
+        document.addEventListener('DOMContentLoaded', () => {
+            const bootTexts = ["DECRYPTING BIOS...", "BYPASSING ETHICAL FILTERS...", "INJECTING DOPAMINE...", "READY."];
+            let i = 0;
+            const interval = setInterval(() => {
+                document.getElementById('boot-text').innerText = bootTexts[i];
+                i++;
+                if(i === bootTexts.length) {
+                    clearInterval(interval);
+                    setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+                }
+            }, 600);
+            
+            renderGrid();
+            fetchNeuralData();
+        });
+
+        // 2. The Data (From User Interest in Psychology & Engineering)
+        const psychologicalExploits = [
+            { id: "0X1", title: "Variable Reward", desc: "The 'Slot Machine' effect. Give rewards at random intervals to ensure the user never stops checking.", tech: "JS logic using Math.random() to gatekeep content access." },
+            { id: "0X2", title: "Loss Aversion", desc: "People fear losing what they have more than they desire gaining something new. Use streaks to trap them.", tech: "Persistent storage (localStorage) to track 'Day Streaks'." },
+            { id: "0X3", title: "The Scroll Void", desc: "Infinite scrolling removes the natural stopping point of the brain, creating a trance-like state.", tech: "Intersection Observer API to trigger continuous DOM injection." },
+            { id: "0X4", title: "False Urgency", desc: "Using countdowns or 'Limited Stock' to bypass logical thinking and trigger the survival brain.", tech: "Real-time WebSockets to simulate 'live' user competition." },
+            { id: "0X5", title: "Reciprocity Hack", desc: "Give a small free gift to trigger an overwhelming psychological need in the user to 'pay it back'.", tech: "Implementation of 'free' initial tier with immediate gated paywalls." }
+        ];
+
+        // 3. Render and Tilt
+        function renderGrid() {
+            const grid = document.getElementById('main-grid');
+            grid.innerHTML = psychologicalExploits.map(exp => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="exploit-card" data-id="${exp.id}" data-tilt data-tilt-max="10" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
+                        <h2 class="card-title">${exp.title}</h2>
+                        <p class="small text-muted">${exp.desc}</p>
+                        <div style="margin-top:20px; border-top:1px solid #222; padding-top:15px; color:var(--rose); font-size:11px;">
+                            <strong>ENGINEERING:</strong> ${exp.tech}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            VanillaTilt.init(document.querySelectorAll(".exploit-card"));
+        }
+
+        // 4. API Integration (Neural Stream)
+        async function fetchNeuralData() {
+            try {
+                // Fetching from a free advice API to simulate "neural commands"
+                const res = await fetch('https://api.adviceslip.com/advice');
+                const data = await res.json();
+                document.getElementById('stream-content').innerText = `LIVE NEURAL FEED: "${data.slip.advice.toUpperCase()}" // ` + document.getElementById('stream-content').innerText;
+            } catch (e) {
+                console.log("Stream offline.");
+            }
+        }
+
+        // 5. Addictive Reward Mechanism (Dopamine Trigger)
+        function triggerDopamine() {
+            // Visual Pop
+            const pop = document.createElement('div');
+            pop.className = 'reward-pop';
+            pop.style.left = (window.innerWidth / 2 + (Math.random() * 100 - 50)) + 'px';
+            pop.style.top = (window.innerHeight - 80) + 'px';
+            pop.innerText = `+${Math.floor(Math.random() * 1000)} DOPAMINE`;
+            document.body.appendChild(pop);
+            
+            // Screen Shake
+            document.body.style.transform = `translate(${Math.random()*5}px, ${Math.random()*5}px)`;
+            setTimeout(() => document.body.style.transform = 'translate(0,0)', 50);
+
+            // Audio Context (Synthesized Beep)
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 800 + Math.random() * 400;
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+
+            setTimeout(() => pop.remove(), 1000);
+        }
+    </script>
+</body>
+</html>
