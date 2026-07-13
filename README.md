@@ -12,9 +12,9 @@ This repository is strictly my personal asset storage and sandbox. It contains r
 This is an unstructured workspace, but if you go digging, you might stumble across:
 
 *   **`/assets`**: My personal cloud storage for GIFs, images, logos, and design elements.
-*   **Psychology & Behavioral Experiments**: Mental model tests and scripts like `matrix.html` and `biases.html`.
-*   **Martial Arts & Telemetry**: Concepts and data tracking like `zanshin-telemetry.html`.
-*   **Random Web Builds**: Standalone projects like a custom `music-player.php` and an interactive Sri Lanka travel map (`sl-full-map.php`).
+*   **Psychology & Behavioral Experiments**: Mental model tests and scripts like `....` and `....`.
+*   **Martial Arts & Telemetry**: Concepts and data tracking like `....`.
+*   **Random Web Builds**: Standalone projects like a custom `....` and an interactive Sri Lanka travel map (`....`).
 
 ---
 
