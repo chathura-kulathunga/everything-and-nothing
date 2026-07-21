@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEURAL // NEXUS</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --primary: #d4af37; /* Old money gold */
+            --accent: #8b0000; /* Deep rose/crimson */
+            --text-main: #e0e0e0;
+            --glass-bg: rgba(10, 10, 10, 0.6);
+            --glass-border: rgba(212, 175, 55, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            color: var(--text-main);
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Glassmorphic Tactical HUD */
+        #hud {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            width: 320px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 4px;
+            padding: 20px;
+            z-index: 10;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
+        }
+
+        .hud-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            border-bottom: 1px solid var(--accent);
+            padding-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent);
+            animation: pulse 2s infinite;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            color: #a0a0a0;
+        }
+
+        .data-value {
+            color: var(--text-main);
+            font-weight: bold;
+        }
+
+        .btn-init {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-init:hover {
+            background: var(--primary);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--glass-border);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Scanline Overlay */
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            z-index: 5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="nexus-canvas"></canvas>
+    <div class="scanlines"></div>
+
+    <div id="hud">
+        <div class="hud-header">
+            SYS // NEXUS
+            <div class="status-dot"></div>
+        </div>
+        <div class="data-row">
+            <span>ACTIVE NODES:</span>
+            <span class="data-value" id="node-count">000</span>
+        </div>
+        <div class="data-row">
+            <span>TELEMETRY X:</span>
+            <span class="data-value" id="pos-x">0000</span>
+        </div>
+        <div class="data-row">
+            <span>TELEMETRY Y:</span>
+            <span class="data-value" id="pos-y">0000</span>
+        </div>
+        <div class="data-row">
+            <span>AUDIO ENGINE:</span>
+            <span class="data-value" id="audio-status" style="color: var(--accent);">OFFLINE</span>
+        </div>
+        
+        <button class="btn-init" id="init-btn">Initialize Audio Subsystem</button>
+    </div>
+
+    <script>
+        /**
+         * KINETIC NEURAL INTERFACE
+         * Core Engine: Canvas API + Web Audio API + Custom Physics
+         */
+        const canvas = document.getElementById('nexus-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI Elements
+        const elNodeCount = document.getElementById('node-count');
+        const elPosX = document.getElementById('pos-x');
+        const elPosY = document.getElementById('pos-y');
+        const elAudioStatus = document.getElementById('audio-status');
+        const initBtn = document.getElementById('init-btn');
+
+        // State Variables
+        let width, height;
+        let particles = [];
+        const particleCount = 120;
+        const connectionDistance = 120;
+        let mouse = { x: null, y: null, radius: 150 };
+        
+        // Audio Engine (Web Audio API)
+        let audioCtx;
+        let audioInitialized = false;
+
+        function initAudio() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            audioInitialized = true;
+            elAudioStatus.textContent = "ONLINE";
+            elAudioStatus.style.color = "var(--primary)";
+            initBtn.style.display = "none";
+        }
+
+        initBtn.addEventListener('click', initAudio);
+
+        // Procedural Synth Ping
+        function playSynthPing(x, y) {
+            if (!audioInitialized) return;
+            
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            // Map X position to frequency (pitch)
+            const freq = 200 + (x / width) * 600;
+            osc.frequency.value = freq;
+            osc.type = 'sine'; // Smooth clean tone
+            
+            // Map Y position to volume
+            const vol = 1.0 - (y / height) * 0.5;
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            // Envelope (Quick attack, slow fade)
+            gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+            
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 1.2);
+        }
+
+        // Resize handler
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Mouse Telemetry
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+            elPosX.textContent = e.x.toString().padStart(4, '0');
+            elPosY.textContent = e.y.toString().padStart(4, '0');
+        });
+
+        // Click Shockwave
+        window.addEventListener('mousedown', (e) => {
+            playSynthPing(e.x, e.y);
+            // Push particles away
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                let dx = p.x - mouse.x;
+                let dy = p.y - mouse.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 250) {
+                    let force = (250 - distance) / 20;
+                    p.vx += (dx / distance) * force;
+                    p.vy += (dy / distance) * force;
+                }
+            }
+        });
+
+        // Particle Class
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2 + 1;
+                this.baseX = this.x;
+                this.baseY = this.y;
+                this.density = (Math.random() * 30) + 1;
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+                // 10% chance to be accent color
+                this.color = Math.random() > 0.9 ? 'rgba(139, 0, 0, 0.8)' : 'rgba(212, 175, 55, 0.6)'; 
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            update() {
+                // Natural movement
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounce off edges
+                if(this.x < 0 || this.x > width) this.vx *= -1;
+                if(this.y < 0 || this.y > height) this.vy *= -1;
+
+                // Friction
+                this.vx *= 0.99;
+                this.vy *= 0.99;
+                
+                // Keep moving a bit
+                if(Math.abs(this.vx) < 0.2) this.vx += (Math.random() - 0.5) * 0.1;
+                if(Math.abs(this.vy) < 0.2) this.vy += (Math.random() - 0.5) * 0.1;
+
+                // Mouse Interaction (Attraction/Repulsion based on proximity)
+                if (mouse.x != null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    let forceDirectionX = dx / distance;
+                    let forceDirectionY = dy / distance;
+                    let maxDistance = mouse.radius;
+                    let force = (maxDistance - distance) / maxDistance;
+                    let directionX = forceDirectionX * force * this.density;
+                    let directionY = forceDirectionY * force * this.density;
+
+                    if (distance < maxDistance) {
+                        this.x -= directionX * 0.05;
+                        this.y -= directionY * 0.05;
+                    }
+                }
+                this.draw();
+            }
+        }
+
+        // Initialize System
+        function init() {
+            particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+            elNodeCount.textContent = particleCount.toString().padStart(3, '0');
+        }
+
+        // Connect Nodes with Lines
+        function connect() {
+            let opacityValue = 1;
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a; b < particles.length; b++) {
+                    let dx = particles[a].x - particles[b].x;
+                    let dy = particles[a].y - particles[b].y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < connectionDistance) {
+                        opacityValue = 1 - (distance / connectionDistance);
+                        ctx.strokeStyle = `rgba(212, 175, 55, ${opacityValue * 0.3})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            // Subtle trail effect
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+            ctx.fillRect(0, 0, width, height);
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+            }
+            connect();
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
