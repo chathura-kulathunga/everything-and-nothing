@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decryption Interface</title>
+    <style>
+        :root {
+            --term-green: #00ff41;
+            --term-bg: #050505;
+            --term-dim: #1a4a24;
+        }
+
+        body {
+            background-color: var(--term-bg);
+            color: var(--term-green);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .terminal-wrapper {
+            border: 1px solid var(--term-dim);
+            padding: 50px;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.05);
+            width: 80%;
+            max-width: 900px;
+            position: relative;
+            background: rgba(10, 10, 10, 0.8);
+        }
+
+        .terminal-wrapper::before {
+            content: "ROOT@SEC_NET_ // BRUTE_FORCE_PROTOCOL_V2.1";
+            position: absolute;
+            top: -12px;
+            left: 30px;
+            background: var(--term-bg);
+            padding: 0 15px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: var(--term-dim);
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin: 0 0 20px 0;
+            cursor: crosshair;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
+            transition: color 0.3s ease;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #555;
+            cursor: crosshair;
+        }
+
+        .target-data {
+            margin-top: 30px;
+            border-top: 1px dashed var(--term-dim);
+            padding-top: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            color: #444;
+        }
+
+        /* Scanline Overlay for that CRT Monitor feel */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+    
+    <div class="terminal-wrapper">
+        <!-- The 'data-value' attribute holds the secret text it decodes into -->
+        <h1 class="cipher-text" data-value="ACCESS GRANTED">SYSTEM LOCKED</h1>
+        <p class="cipher-text" data-value="Payload successfully injected. Establishing secure reverse shell via port 443... Root privileges escalated. Bypass complete.">Awaiting manual override command. Authentication required to view protected packet data.</p>
+        
+        <div class="target-data">
+            <span class="cipher-text" data-value="TARGET_IP: 192.168.1.104">TARGET_IP: [ENCRYPTED]</span>
+            <span class="cipher-text" data-value="LATENCY: 12ms">LATENCY: [ENCRYPTED]</span>
+            <span class="cipher-text" data-value="STATUS: CONNECTED">STATUS: DISCONNECTED</span>
+        </div>
+    </div>
+
+    <script>
+        // The character set used for the "scrambling" effect
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*<>[]{}";
+        
+        document.querySelectorAll('.cipher-text').forEach(element => {
+            // Store the initial text so we can reset it if we want
+            const initialText = element.innerText;
+            
+            element.addEventListener('mouseover', event => {
+                let iterations = 0;
+                const targetText = event.target.dataset.value;
+                
+                clearInterval(element.interval);
+                
+                element.interval = setInterval(() => {
+                    event.target.innerText = targetText.split("")
+                        .map((char, index) => {
+                            // If it's a space, keep it a space for readability
+                            if (char === " ") return " ";
+                            
+                            // Once the iteration passes the index, reveal the real character
+                            if(index < iterations) {
+                                return targetText[index];
+                            }
+                            // Otherwise, return a random character
+                            return chars[Math.floor(Math.random() * chars.length)];
+                        })
+                        .join("");
+                    
+                    // Stop the interval when fully decrypted
+                    if(iterations >= targetText.length) {
+                        clearInterval(element.interval);
+                        // Flash white on completion for impact
+                        event.target.style.color = "#fff";
+                        event.target.style.textShadow = "0 0 20px #fff";
+                        setTimeout(() => { 
+                            event.target.style.color = ""; 
+                            event.target.style.textShadow = "";
+                        }, 150);
+                    }
+                    
+                    // Adjust this number to change decryption speed (higher = faster)
+                    iterations += 1 / 2;
+                }, 30);
+            });
+        });
+    </script>
+</body>
+</html>
