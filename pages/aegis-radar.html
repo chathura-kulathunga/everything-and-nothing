@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A.E.G.I.S. // RADAR</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --gold: #d4af37;
+            --rose-gem: #8b0000;
+            --text-muted: #666;
+            --glass-bg: rgba(10, 10, 10, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--gold);
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+
+        #radar-container {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* Side Telemetry Panel */
+        #telemetry-panel {
+            width: 350px;
+            background: var(--glass-bg);
+            border-left: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+        }
+
+        .panel-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            border-bottom: 2px solid var(--rose-gem);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .log-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .log-container::-webkit-scrollbar-thumb {
+            background: var(--gold);
+        }
+
+        .log-entry {
+            font-size: 0.85rem;
+            background: rgba(212, 175, 55, 0.05);
+            border-left: 3px solid var(--rose-gem);
+            padding: 10px;
+            animation: slideIn 0.3s ease-out forwards;
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+        }
+
+        .log-data {
+            color: #e0e0e0;
+        }
+
+        .pulse-text {
+            animation: textPulse 2s infinite;
+        }
+
+        @keyframes slideIn {
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes textPulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.3));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <div id="radar-container">
+        <canvas id="radar-canvas"></canvas>
+    </div>
+
+    <div id="telemetry-panel">
+        <div class="panel-header">
+            A.E.G.I.S. <br>
+            <span style="font-size: 0.8rem; color: var(--text-muted);" class="pulse-text">SWEEPING BEHAVIORAL VECTORS...</span>
+        </div>
+        <div class="log-container" id="log-output">
+            <!-- Logs spawn here -->
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('radar-canvas');
+        const ctx = canvas.getContext('2d');
+        const logOutput = document.getElementById('log-output');
+
+        let width, height, cx, cy, radius;
+        let angle = 0;
+        const blips = [];
+        
+        // Colors from CSS
+        const colorGold = 'rgba(212, 175, 55, 1)';
+        const colorGoldFaded = 'rgba(212, 175, 55, 0.15)';
+        const colorRose = 'rgba(139, 0, 0, 1)';
+
+        function resize() {
+            const container = document.getElementById('radar-container');
+            width = canvas.width = container.clientWidth;
+            height = canvas.height = container.clientHeight;
+            cx = width / 2;
+            cy = height / 2;
+            radius = Math.min(width, height) / 2.5;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Add anomaly on click
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Calculate distance from center
+            const dx = mouseX - cx;
+            const dy = mouseY - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist <= radius) {
+                // Calculate angle for detection logic
+                let blipAngle = Math.atan2(dy, dx);
+                if (blipAngle < 0) blipAngle += Math.PI * 2;
+
+                blips.push({
+                    x: mouseX,
+                    y: mouseY,
+                    angle: blipAngle,
+                    opacity: 0,
+                    id: Math.random().toString(16).substr(2, 6).toUpperCase()
+                });
+            }
+        });
+
+        function logDetection(id, dist) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric", fractionalSecondDigits: 2 });
+            
+            entry.innerHTML = `
+                <div class="log-time">[${time}]</div>
+                <div class="log-data">
+                    <span style="color: var(--rose-gem); font-weight: bold;">ANOMALY DETECTED:</span><br>
+                    ID: ${id}<br>
+                    VECTOR: ${dist.toFixed(2)} units
+                </div>
+            `;
+            
+            logOutput.prepend(entry);
+
+            // Keep log clean
+            if(logOutput.children.length > 8) {
+                logOutput.removeChild(logOutput.lastChild);
+            }
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = colorGoldFaded;
+            ctx.lineWidth = 1;
+
+            // Concentric circles
+            for (let i = 1; i <= 4; i++) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, (radius / 4) * i, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Crosshairs
+            ctx.beginPath();
+            ctx.moveTo(cx - radius, cy);
+            ctx.lineTo(cx + radius, cy);
+            ctx.moveTo(cx, cy - radius);
+            ctx.lineTo(cx, cy + radius);
+            ctx.stroke();
+        }
+
+        function drawSweep() {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+
+            // Create conic gradient for the sweep trail
+            const gradient = ctx.createConicGradient(0, 0, 0);
+            gradient.addColorStop(0, 'rgba(212, 175, 55, 0.4)');
+            gradient.addColorStop(0.1, 'rgba(212, 175, 55, 0.0)');
+            gradient.addColorStop(1, 'rgba(212, 175, 55, 0.0)');
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Leading solid line
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(radius, 0);
+            ctx.strokeStyle = colorGold;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawBlips() {
+            // Sweep angle normalized 0 to 2PI
+            const sweepAngle = angle % (Math.PI * 2);
+
+            for (let i = blips.length - 1; i >= 0; i--) {
+                let blip = blips[i];
+                
+                // Detection Logic: If sweep passes the blip's angle
+                const angleDiff = sweepAngle - blip.angle;
+                if (angleDiff > 0 && angleDiff < 0.1) {
+                    if (blip.opacity < 0.1) { // Only log on fresh strike
+                        const dx = blip.x - cx;
+                        const dy = blip.y - cy;
+                        logDetection(blip.id, Math.sqrt(dx*dx + dy*dy));
+                    }
+                    blip.opacity = 1; // Light it up!
+                }
+
+                if (blip.opacity > 0) {
+                    ctx.beginPath();
+                    ctx.arc(blip.x, blip.y, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(139, 0, 0, ${blip.opacity})`;
+                    ctx.fill();
+                    
+                    // Outer glow
+                    ctx.beginPath();
+                    ctx.arc(blip.x, blip.y, 10, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(139, 0, 0, ${blip.opacity * 0.5})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // Fade out slowly
+                    blip.opacity -= 0.008;
+                }
+
+                // Remove dead blips
+                if (blip.opacity <= -0.5) {
+                    blips.splice(i, 1);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Clear canvas with a slight fade for motion blur
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.8)';
+            ctx.fillRect(0, 0, width, height);
+
+            drawGrid();
+            drawBlips();
+            drawSweep();
+
+            // Radar speed
+            angle += 0.03; 
+        }
+
+        animate();
+    </script>
+</body>
+</html>
