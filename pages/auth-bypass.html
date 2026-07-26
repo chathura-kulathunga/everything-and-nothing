@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Override // Protocol</title>
+    <style>
+        :root {
+            --bg: #070707;
+            --gold: #d4af37;
+            --rose: #8b0000;
+            --dim-gold: rgba(212, 175, 55, 0.2);
+            --text-main: #eaeaea;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: 'Courier New', Courier, monospace;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Canvas for the shatter physics */
+        #shatter-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .auth-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .status-text {
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            color: var(--gold);
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            min-height: 24px;
+            text-shadow: 0 0 10px var(--dim-gold);
+            transition: color 0.3s;
+        }
+
+        .terminal-readout {
+            font-size: 0.8rem;
+            color: #555;
+            margin-top: 30px;
+            letter-spacing: 1px;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+
+        /* The Hold-to-Interact Core */
+        .core-wrapper {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .core-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(var(--gold) 0%, transparent 0%);
+            mask: radial-gradient(transparent 68%, black 70%);
+            -webkit-mask: radial-gradient(transparent 68%, black 70%);
+            transform: rotate(-90deg);
+            box-shadow: 0 0 20px var(--dim-gold);
+        }
+
+        .core-btn {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            background: var(--bg);
+            border: 2px solid var(--dim-gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .core-btn::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--rose);
+            transform: rotate(45deg);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(139, 0, 0, 0.4);
+        }
+
+        /* Interaction States */
+        .core-wrapper:active .core-btn {
+            transform: scale(0.95);
+            border-color: var(--gold);
+        }
+        
+        .core-wrapper:active .core-btn::after {
+            transform: rotate(135deg) scale(0.8);
+            border-color: var(--gold);
+            background: var(--rose);
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="shatter-canvas"></canvas>
+
+    <div class="auth-container" id="auth-ui">
+        <div class="status-text" id="status-msg">AWAITING INPUT</div>
+        
+        <div class="core-wrapper" id="hack-core">
+            <div class="core-ring" id="progress-ring"></div>
+            <div class="core-btn"></div>
+        </div>
+
+        <div class="terminal-readout" id="terminal-log">
+            > Initializing sequence...<br>
+            > Hold core to execute SQLi payload.<br>
+            > Target port: 8080 open.
+        </div>
+    </div>
+
+    <script>
+        const hackCore = document.getElementById('hack-core');
+        const progressRing = document.getElementById('progress-ring');
+        const statusMsg = document.getElementById('status-msg');
+        const terminalLog = document.getElementById('terminal-log');
+        const authUI = document.getElementById('auth-ui');
+        const canvas = document.getElementById('shatter-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let progress = 0;
+        let hackInterval;
+        let decayInterval;
+        let isHacking = false;
+        let isUnlocked = false;
+
+        // Particle System variables
+        let particles = [];
+        const colors = ['#d4af37', '#8b0000', '#f4e094', '#5e0000'];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Update the CSS conic gradient to act as a radial progress bar
+        function updateRing() {
+            progressRing.style.background = `conic-gradient(var(--gold) ${progress}%, transparent 0%)`;
+        }
+
+        // Add random hex logging to the terminal for visual flair
+        function updateLog() {
+            const hex = Math.random().toString(16).substr(2, 8).toUpperCase();
+            terminalLog.innerHTML = `> Injecting payload...<br>> Bypassing node 0x${hex}<br>> Handshake in progress...`;
+        }
+
+        // Start the hold interaction
+        function startHack(e) {
+            if (e.type === 'mousedown' && e.button !== 0) return; // Only left click
+            if (isUnlocked) return;
+            
+            isHacking = true;
+            clearInterval(decayInterval);
+            statusMsg.textContent = "INJECTING PAYLOAD...";
+            statusMsg.style.color = "var(--rose)";
+
+            hackInterval = setInterval(() => {
+                progress += 1.5; // Speed of the progress ring
+                if (progress % 15 === 0) updateLog();
+                
+                if (progress >= 100) {
+                    progress = 100;
+                    triggerUnlock();
+                }
+                updateRing();
+            }, 30);
+        }
+
+        // Stop the hold interaction (let go too early)
+        function stopHack() {
+            if (!isHacking || isUnlocked) return;
+            
+            isHacking = false;
+            clearInterval(hackInterval);
+            statusMsg.textContent = "CONNECTION DROPPED";
+            statusMsg.style.color = "#555";
+            terminalLog.innerHTML = "> Sequence aborted.<br>> Connection forcibly closed by remote host.";
+
+            decayInterval = setInterval(() => {
+                progress -= 3; // Deplete faster than it fills
+                if (progress <= 0) {
+                    progress = 0;
+                    clearInterval(decayInterval);
+                    statusMsg.textContent = "AWAITING INPUT";
+                    statusMsg.style.color = "var(--gold)";
+                    terminalLog.innerHTML = "> Ready.<br>> Hold core to execute SQLi payload.<br>> Target port: 8080 open.";
+                }
+                updateRing();
+            }, 20);
+        }
+
+        // Attach mouse and touch events
+        hackCore.addEventListener('mousedown', startHack);
+        hackCore.addEventListener('touchstart', (e) => { e.preventDefault(); startHack(e); });
+        
+        window.addEventListener('mouseup', stopHack);
+        window.addEventListener('touchend', stopHack);
+
+        // Success State
+        function triggerUnlock() {
+            isUnlocked = true;
+            clearInterval(hackInterval);
+            
+            // Hide the UI
+            authUI.classList.add('hidden');
+            
+            // Get center position for explosion
+            const rect = hackCore.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            createExplosion(centerX, centerY);
+            
+            // Show success text after a delay
+            setTimeout(() => {
+                authUI.classList.remove('hidden');
+                hackCore.style.display = 'none';
+                statusMsg.textContent = "ACCESS GRANTED";
+                statusMsg.style.color = "var(--gold)";
+                statusMsg.style.textShadow = "0 0 20px var(--gold)";
+                terminalLog.innerHTML = "> ROOT PRIVILEGES ACQUIRED.<br>> ENCRYPTED TUNNEL ESTABLISHED.<br>> WELCOME.";
+            }, 1500);
+        }
+
+        // Canvas Particle Physics
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 5 + 2;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 15 + 5;
+                
+                this.vx = Math.cos(angle) * velocity;
+                this.vy = Math.sin(angle) * velocity;
+                
+                this.gravity = 0.4;
+                this.friction = 0.96;
+                this.life = 1.0; // Opacity
+                this.decay = Math.random() * 0.015 + 0.005;
+            }
+
+            update() {
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.vy += this.gravity;
+                
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                this.life -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                // Draw sharp polygonal shards instead of circles
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.vx * 0.1); // Spin based on velocity
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size);
+                ctx.lineTo(this.size, this.size);
+                ctx.lineTo(-this.size, this.size);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createExplosion(x, y) {
+            for (let i = 0; i < 150; i++) {
+                particles.push(new Particle(x, y));
+            }
+            animate();
+        }
+
+        function animate() {
+            if(particles.length === 0) return;
+            
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw();
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
