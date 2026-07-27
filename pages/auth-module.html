@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Auth Module</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --bg-surface: #0f0f11;
+            --gold-primary: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.3);
+            --rose-accent: #8b0000;
+            --text-main: #eaeaea;
+            --text-muted: #777;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* Reusable Card Component */
+        .auth-card {
+            background: var(--bg-surface);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            border-radius: 8px;
+            border: 1px solid var(--gold-dim);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .auth-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            color: var(--gold-primary);
+            text-transform: uppercase;
+        }
+
+        .auth-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        /* Reusable Input Group with Floating Labels */
+        .input-group {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .input-control {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--text-muted);
+            color: var(--text-main);
+            font-size: 1rem;
+            padding: 10px 0;
+            transition: var(--transition);
+        }
+
+        .input-control:focus {
+            outline: none;
+            border-bottom-color: var(--gold-primary);
+        }
+
+        .input-label {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            color: var(--text-muted);
+            font-size: 1rem;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+
+        /* Floating Label Magic */
+        .input-control:focus ~ .input-label,
+        .input-control:not(:placeholder-shown) ~ .input-label {
+            top: -12px;
+            font-size: 0.75rem;
+            color: var(--gold-primary);
+        }
+
+        /* Password Strength Meter */
+        .strength-meter {
+            height: 3px;
+            background: #222;
+            margin-top: 5px;
+            border-radius: 2px;
+            overflow: hidden;
+            display: none; /* Hidden by default */
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0;
+            transition: var(--transition);
+        }
+
+        /* Reusable Buttons */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: 1px solid var(--gold-primary);
+            color: var(--gold-primary);
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: var(--transition);
+            border-radius: 4px;
+        }
+
+        .btn:hover {
+            background: var(--gold-primary);
+            color: var(--bg-base);
+            box-shadow: 0 0 15px var(--gold-dim);
+        }
+
+        .btn-text {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-top: 15px;
+            text-transform: none;
+            width: auto;
+        }
+
+        .btn-text:hover {
+            color: var(--gold-primary);
+            background: none;
+            box-shadow: none;
+        }
+
+        .action-footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1 class="auth-title" id="form-title">Authenticate</h1>
+            <p class="auth-subtitle">Secure terminal access required.</p>
+        </div>
+
+        <form id="auth-form" onsubmit="event.preventDefault();">
+            <div class="input-group">
+                <!-- placeholder=" " is required for the CSS floating label hack -->
+                <input type="text" id="username" class="input-control" placeholder=" " required autocomplete="off">
+                <label for="username" class="input-label">Identity [Email/Handle]</label>
+            </div>
+
+            <div class="input-group">
+                <input type="password" id="password" class="input-control" placeholder=" " required>
+                <label for="password" class="input-label">Security Key</label>
+                <div class="strength-meter" id="strength-container">
+                    <div class="strength-bar" id="strength-bar"></div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" id="submit-btn">Initialize Session</button>
+        </form>
+
+        <div class="action-footer">
+            <button class="btn btn-text" id="toggle-mode">Establish new credentials instead?</button>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let isLoginMode = true;
+
+        const formTitle = document.getElementById('form-title');
+        const submitBtn = document.getElementById('submit-btn');
+        const toggleBtn = document.getElementById('toggle-mode');
+        const passInput = document.getElementById('password');
+        const strengthContainer = document.getElementById('strength-container');
+        const strengthBar = document.getElementById('strength-bar');
+
+        // --- Toggle Logic (Login vs Register) ---
+        toggleBtn.addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            
+            if (isLoginMode) {
+                formTitle.textContent = "Authenticate";
+                submitBtn.textContent = "Initialize Session";
+                toggleBtn.textContent = "Establish new credentials instead?";
+                strengthContainer.style.display = "none";
+            } else {
+                formTitle.textContent = "Register";
+                submitBtn.textContent = "Generate Credentials";
+                toggleBtn.textContent = "Return to authentication?";
+                strengthContainer.style.display = "block";
+            }
+            
+            // Reset fields
+            document.getElementById('auth-form').reset();
+            strengthBar.style.width = '0';
+        });
+
+        // --- Reusable Password Strength Logic ---
+        passInput.addEventListener('input', (e) => {
+            if (isLoginMode) return; // Only show strength on registration
+
+            const val = e.target.value;
+            let strength = 0;
+
+            if (val.length > 5) strength += 25;
+            if (val.match(/[A-Z]/)) strength += 25;
+            if (val.match(/[0-9]/)) strength += 25;
+            if (val.match(/[^a-zA-Z0-9]/)) strength += 25; // Special char
+
+            strengthBar.style.width = `${strength}%`;
+
+            // Color mapping matching the aesthetic
+            if (strength <= 25) {
+                strengthBar.style.backgroundColor = 'var(--rose-accent)';
+            } else if (strength <= 50) {
+                strengthBar.style.backgroundColor = '#b05a00'; // Amber
+            } else if (strength <= 75) {
+                strengthBar.style.backgroundColor = '#c49a1d'; // Muted Gold
+            } else {
+                strengthBar.style.backgroundColor = 'var(--gold-primary)'; // Full Gold
+            }
+        });
+    </script>
+</body>
+</html>
