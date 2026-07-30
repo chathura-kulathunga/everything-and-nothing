@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault Protocol // Execute</title>
+    <style>
+        :root {
+            --bg-base: #070707;
+            --track-bg: #111;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose-gem: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .slide-container {
+            position: relative;
+            width: 350px;
+            height: 60px;
+            background: var(--track-bg);
+            border: 1px solid var(--gold-dim);
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+        }
+
+        /* The text sitting in the background of the track */
+        .slide-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--gold);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            z-index: 1;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        /* The trail that follows the slider */
+        .slide-trail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, transparent, var(--gold-dim));
+            z-index: 2;
+        }
+
+        /* The draggable 'gem' */
+        .slide-thumb {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #a80000, var(--rose-gem), #3a0000);
+            border-radius: 50%;
+            border: 2px solid var(--gold);
+            cursor: grab;
+            z-index: 3;
+            box-shadow: 0 0 15px var(--rose-glow), inset 0 0 10px rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+        }
+
+        .slide-thumb::after {
+            content: '»';
+            color: var(--gold);
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 0 0 5px var(--gold);
+        }
+
+        .slide-thumb:active {
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+
+        /* Success State applied via JS */
+        .slide-container.success {
+            border-color: var(--gold);
+            box-shadow: 0 0 20px var(--gold-dim);
+        }
+
+        .slide-container.success .slide-thumb {
+            background: radial-gradient(circle at 30% 30%, #f4e094, var(--gold), #8a7019);
+            box-shadow: 0 0 20px var(--gold);
+            border-color: #fff;
+        }
+
+        .slide-container.success .slide-thumb::after {
+            content: '✓';
+            color: var(--bg-base);
+            text-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="slide-container" id="slide-container">
+        <div class="slide-trail" id="slide-trail"></div>
+        <div class="slide-text" id="slide-text">VERIFY INTENT</div>
+        <div class="slide-thumb" id="slide-thumb"></div>
+    </div>
+
+    <script>
+        const container = document.getElementById('slide-container');
+        const thumb = document.getElementById('slide-thumb');
+        const trail = document.getElementById('slide-trail');
+        const text = document.getElementById('slide-text');
+
+        let isDragging = false;
+        let startX = 0;
+        let currentX = 0;
+        let unlocked = false;
+
+        // Boundaries
+        const maxDrag = container.offsetWidth - thumb.offsetWidth - 10; // 10px for padding
+
+        function startDrag(e) {
+            if (unlocked) return;
+            isDragging = true;
+            thumb.style.transition = 'none';
+            trail.style.transition = 'none';
+            startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        }
+
+        function drag(e) {
+            if (!isDragging || unlocked) return;
+            
+            const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            let moveX = clientX - startX;
+
+            // Restrict movement within track
+            if (moveX < 0) moveX = 0;
+            if (moveX > maxDrag) moveX = maxDrag;
+
+            currentX = moveX;
+            thumb.style.transform = `translateX(${currentX}px)`;
+            trail.style.width = `${currentX + 25}px`; // +25 to cover half the thumb
+
+            // Fade out text as you drag
+            text.style.opacity = 1 - (currentX / maxDrag);
+        }
+
+        function stopDrag() {
+            if (!isDragging || unlocked) return;
+            isDragging = false;
+
+            if (currentX >= maxDrag * 0.95) {
+                // Success threshold met
+                currentX = maxDrag;
+                unlockAction();
+            } else {
+                // Snap back
+                currentX = 0;
+                thumb.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                trail.style.transition = 'width 0.4s ease';
+                thumb.style.transform = `translateX(0px)`;
+                trail.style.width = '0px';
+                text.style.opacity = 1;
+            }
+        }
+
+        function unlockAction() {
+            unlocked = true;
+            thumb.style.transform = `translateX(${maxDrag}px)`;
+            trail.style.width = '100%';
+            
+            container.classList.add('success');
+            text.textContent = "PROTOCOL EXECUTED";
+            text.style.opacity = 1;
+
+            // Optional: reset after a delay for reusability in this demo
+            setTimeout(resetSlider, 3000);
+        }
+
+        function resetSlider() {
+            unlocked = false;
+            currentX = 0;
+            container.classList.remove('success');
+            text.textContent = "VERIFY INTENT";
+            
+            thumb.style.transition = 'all 0.5s ease';
+            trail.style.transition = 'all 0.5s ease';
+            
+            thumb.style.transform = `translateX(0px)`;
+            trail.style.width = '0px';
+            text.style.opacity = 1;
+        }
+
+        // Mouse Events
+        thumb.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', drag);
+        window.addEventListener('mouseup', stopDrag);
+
+        // Touch Events for Mobile compatibility
+        thumb.addEventListener('touchstart', startDrag);
+        window.addEventListener('touchmove', drag);
+        window.addEventListener('touchend', stopDrag);
+    </script>
+</body>
+</html>
