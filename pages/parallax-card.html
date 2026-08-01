@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obsidian // Parallax Card</title>
+    <style>
+        /* Base Theme Variables */
+        :root {
+            --bg-main: #050505;
+            --card-bg: rgba(15, 15, 15, 0.6);
+            --gold-accent: #d4af37;
+            --rose-glow: #8b0000;
+            --text-light: #eaeaea;
+            --text-muted: #777;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg-main);
+            font-family: 'Courier New', Courier, monospace;
+            /* Perspective is required on the body/parent to enable 3D space */
+            perspective: 1000px; 
+        }
+
+        /* The interactive card wrapper */
+        .parallax-card {
+            width: 320px;
+            height: 480px;
+            position: relative;
+            transform-style: preserve-3d; /* Allows child layers to pop out in 3D */
+            border-radius: 12px;
+            cursor: pointer;
+            /* Transition is used only for the snap-back effect when mouse leaves */
+            transition: transform 0.1s ease, box-shadow 0.3s ease;
+        }
+
+        /* The glassmorphic background layer */
+        .card-bg-layer {
+            position: absolute;
+            inset: 0;
+            background: var(--card-bg);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: inherit;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            transition: border-color 0.3s, box-shadow 0.3s;
+            /* Pushed slightly backward in Z-space */
+            transform: translateZ(-20px); 
+        }
+
+        /* Hover effects for the background */
+        .parallax-card:hover .card-bg-layer {
+            border-color: var(--gold-accent);
+            box-shadow: 0 15px 40px rgba(139, 0, 0, 0.4), inset 0 0 20px rgba(139, 0, 0, 0.2);
+        }
+
+        /* The content layer (Text, Images, etc.) */
+        .card-content-layer {
+            position: absolute;
+            inset: 0;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none; /* Allows mouse events to hit the main card wrapper */
+            /* Pushed forward in Z-space to create the floating effect */
+            transform: translateZ(50px); 
+        }
+
+        /* Decorative Avatar Ring */
+        .avatar-ring {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 2px dashed var(--gold-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+            /* Pushed even further forward for extreme depth */
+            transform: translateZ(30px); 
+        }
+
+        .avatar-ring::after {
+            content: '';
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #111, #222);
+            border: 1px solid var(--rose-glow);
+        }
+
+        /* Typography */
+        .card-title {
+            color: var(--text-light);
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .card-subtext {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-align: center;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .status-badge {
+            margin-top: auto;
+            color: var(--rose-glow);
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            border: 1px solid var(--rose-glow);
+            padding: 5px 10px;
+            background: rgba(139, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="parallax-card" id="interactive-card">
+        <!-- Background Layer -->
+        <div class="card-bg-layer"></div>
+        
+        <!-- Content Layer -->
+        <div class="card-content-layer">
+            <div class="avatar-ring"></div>
+            <h2 class="card-title">Sys_Admin</h2>
+            <p class="card-subtext">Level 4 Clearance.<br>Bio-metric lock active.</p>
+            <div class="status-badge">AUTHORIZED</div>
+        </div>
+    </div>
+
+    <script>
+        const cardElement = document.getElementById('interactive-card');
+
+        // Handle mouse movement over the card
+        cardElement.addEventListener('mousemove', (event) => {
+            const cardRect = cardElement.getBoundingClientRect();
+            
+            // Calculate cursor position relative to the exact center of the card
+            const cursorX = event.clientX - cardRect.left; 
+            const cursorY = event.clientY - cardRect.top;
+            const centerX = cardRect.width / 2;
+            const centerY = cardRect.height / 2;
+            
+            // Calculate tilt limits (capped at 15 degrees max rotation)
+            const rotateX = ((cursorY - centerY) / centerY) * -15; 
+            const rotateY = ((cursorX - centerX) / centerX) * 15;
+
+            // Apply the 3D rotation based on cursor coordinates
+            cardElement.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        });
+
+        // Snap back to zero when mouse leaves
+        cardElement.addEventListener('mouseleave', () => {
+            cardElement.style.transform = `rotateX(0deg) rotateY(0deg)`;
+            cardElement.style.transition = 'transform 0.5s ease'; // Smooth reset animation
+        });
+
+        // Remove CSS transition during hover so tracking feels instant and 1:1
+        cardElement.addEventListener('mouseenter', () => {
+            cardElement.style.transition = 'none'; 
+        });
+    </script>
+</body>
+</html>
