@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-Trust // Override</title>
+    <style>
+        :root {
+            --bg-base: #070707;
+            --surface: #121212;
+            --surface-hover: #1a1a1a;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.3);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.5);
+            --text-main: #eaeaea;
+            --text-muted: #777;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        /* Initial Trigger Button */
+        .btn-trigger {
+            padding: 15px 30px;
+            background: transparent;
+            border: 1px solid var(--rose);
+            color: var(--rose);
+            font-size: 1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(139, 0, 0, 0.1);
+        }
+
+        .btn-trigger:hover {
+            background: var(--rose);
+            color: var(--text-main);
+            box-shadow: 0 0 20px var(--rose-glow);
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 5, 5, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            z-index: 100;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* Modal Box */
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            width: 100%;
+            max-width: 480px;
+            padding: 40px;
+            border-radius: 2px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 15px rgba(212, 175, 55, 0.05);
+            transform: translateY(20px);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-box {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            font-size: 1.4rem;
+            color: var(--rose);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-header::before {
+            content: '⚠';
+            font-size: 1.2rem;
+        }
+
+        .modal-body {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .target-data {
+            background: rgba(0,0,0,0.4);
+            padding: 10px;
+            border-left: 2px solid var(--gold);
+            color: var(--gold);
+            margin: 15px 0;
+            font-size: 0.85rem;
+        }
+
+        /* Verification Input */
+        .input-group {
+            margin-bottom: 30px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .verify-input {
+            width: 100%;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid #333;
+            color: var(--text-main);
+            padding: 15px;
+            font-size: 1rem;
+            outline: none;
+            text-align: center;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .verify-input:focus {
+            border-color: var(--gold);
+            box-shadow: inset 0 0 10px var(--gold-dim);
+        }
+
+        .verify-input.success {
+            border-color: var(--gold);
+            color: var(--gold);
+            text-shadow: 0 0 5px var(--gold);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        /* Action Buttons */
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            border-color: #444;
+            color: var(--text-muted);
+        }
+
+        .btn-cancel:hover {
+            background: #222;
+            color: var(--text-main);
+        }
+
+        .btn-execute {
+            background: #222;
+            border-color: #333;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .btn-execute.unlocked {
+            background: transparent;
+            border-color: var(--rose);
+            color: var(--rose);
+            cursor: pointer;
+            box-shadow: inset 0 0 15px rgba(139,0,0,0.2);
+        }
+
+        .btn-execute.unlocked:hover {
+            background: var(--rose);
+            color: var(--text-main);
+            box-shadow: 0 0 20px var(--rose-glow);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Trigger -->
+    <button class="btn-trigger" id="open-modal-btn">Initiate Purge Sequence</button>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">Critical Action Required</div>
+            
+            <div class="modal-body">
+                You are about to execute a destructive protocol. This action is irreversible and will permanently sever the connection to the target cluster.
+                
+                <div class="target-data">
+                    TARGET: PRD_DB_CLUSTER_09<br>
+                    ACTION: FORMAT & OVERWRITE
+                </div>
+            </div>
+
+            <div class="input-group">
+                <span class="input-label">Type <span style="color: var(--gold);">CONFIRM-OVERRIDE</span> to proceed:</span>
+                <input type="text" class="verify-input" id="verify-input" placeholder="..." autocomplete="off">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-cancel" id="cancel-btn">Abort</button>
+                <button class="btn btn-execute" id="execute-btn" disabled>Execute</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const openBtn = document.getElementById('open-modal-btn');
+        const overlay = document.getElementById('modal-overlay');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const executeBtn = document.getElementById('execute-btn');
+        const verifyInput = document.getElementById('verify-input');
+
+        const REQUIRED_STRING = "CONFIRM-OVERRIDE";
+
+        // Open Modal
+        openBtn.addEventListener('click', () => {
+            overlay.classList.add('active');
+            verifyInput.value = '';
+            verifyInput.classList.remove('success');
+            executeBtn.classList.remove('unlocked');
+            executeBtn.setAttribute('disabled', 'true');
+            setTimeout(() => verifyInput.focus(), 400); // Focus after transition
+        });
+
+        // Close Modal
+        const closeModal = () => {
+            overlay.classList.remove('active');
+        };
+        cancelBtn.addEventListener('click', closeModal);
+
+        // Security Validation Logic
+        verifyInput.addEventListener('input', (e) => {
+            const currentVal = e.target.value.trim();
+
+            if (currentVal === REQUIRED_STRING) {
+                // Unlock State
+                verifyInput.classList.add('success');
+                executeBtn.classList.add('unlocked');
+                executeBtn.removeAttribute('disabled');
+                executeBtn.textContent = "EXECUTE PROTOCOL";
+            } else {
+                // Locked State
+                verifyInput.classList.remove('success');
+                executeBtn.classList.remove('unlocked');
+                executeBtn.setAttribute('disabled', 'true');
+                executeBtn.textContent = "EXECUTE";
+            }
+        });
+
+        // Execute Action
+        executeBtn.addEventListener('click', () => {
+            if (verifyInput.value.trim() === REQUIRED_STRING) {
+                executeBtn.textContent = "EXECUTING...";
+                executeBtn.style.background = "var(--rose)";
+                executeBtn.style.color = "var(--text-main)";
+                
+                // Simulate backend process
+                setTimeout(() => {
+                    alert("Protocol executed successfully. Target neutralized.");
+                    closeModal();
+                }, 1200);
+            }
+        });
+    </script>
+</body>
+</html>
