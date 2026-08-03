@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Protocol // Dead-Man's Switch</title>
+    <style>
+        :root {
+            --bg-base: #0a0a0a;
+            --gold: #d4af37;
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Just some dummy content so you can see the overlay fade in over it */
+        .dummy-content {
+            text-align: center;
+            color: #333;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+        }
+
+        /* 
+         * The Idle Overlay 
+         * Covers the whole screen, hidden by default using opacity
+         */
+        .idle-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 5, 5, 0.95);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none; /* Ignore clicks when hidden */
+            transition: opacity 1.5s ease-in-out; /* Slow, dramatic fade in */
+        }
+
+        /* When active, it becomes visible and blocks the UI */
+        .idle-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .warning-text {
+            color: var(--gold);
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        /* 
+         * The Pulse Button
+         * Uses a continuous heartbeat animation to draw attention
+         */
+        .btn-pulse {
+            padding: 20px 40px;
+            background: transparent;
+            border: 1px solid var(--rose);
+            color: var(--rose);
+            font-size: 1rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 4px;
+            animation: heartbeat 2s infinite;
+            transition: all 0.3s ease;
+        }
+
+        .btn-pulse:hover {
+            background: var(--rose);
+            color: var(--text-main);
+            box-shadow: 0 0 30px var(--rose-glow);
+            animation: none; /* Stop pulsing on hover */
+            transform: scale(1.05);
+        }
+
+        /* Keyframes for the glowing heartbeat effect */
+        @keyframes heartbeat {
+            0% { box-shadow: 0 0 0 0 rgba(139, 0, 0, 0.7); }
+            50% { box-shadow: 0 0 0 20px rgba(139, 0, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(139, 0, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dummy-content">
+        SYSTEM ACTIVE // WAITING FOR INPUT<br>
+        <span style="font-size: 0.8rem; color: #555;">(Stop moving your mouse for 4 seconds)</span>
+    </div>
+
+    <!-- The Idle Protocol Overlay -->
+    <div class="idle-overlay" id="idle-overlay">
+        <div class="warning-text">CONNECTION FADING</div>
+        <button class="btn-pulse" id="pulse-btn">PULSE TO AWAKEN</button>
+    </div>
+
+    <script>
+        const idleOverlay = document.getElementById('idle-overlay');
+        const pulseBtn = document.getElementById('pulse-btn');
+        
+        let idleTimer;
+        // Set time limit to 4 seconds for testing (4000 ms). 
+        // In a real app, this would be 5-10 minutes (300000+ ms).
+        const IDLE_TIME_LIMIT = 4000; 
+        
+        let isIdle = false;
+
+        // Function to trigger the idle state
+        function triggerIdleState() {
+            if (!isIdle) {
+                isIdle = true;
+                idleOverlay.classList.add('active');
+            }
+        }
+
+        // Function to reset the timer when user is active
+        function resetTimer() {
+            // Only reset if we are NOT currently in the locked idle state
+            if (!isIdle) {
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(triggerIdleState, IDLE_TIME_LIMIT);
+            }
+        }
+
+        // Function to awaken the system via the Pulse button
+        function awakenSystem() {
+            isIdle = false;
+            idleOverlay.classList.remove('active');
+            resetTimer(); // Restart the clock
+        }
+
+        // --- Event Listeners ---
+
+        // Listen for user activity across the document
+        window.addEventListener('mousemove', resetTimer);
+        window.addEventListener('mousedown', resetTimer);
+        window.addEventListener('keydown', resetTimer);
+        window.addEventListener('touchstart', resetTimer);
+        
+        // Listen for the button click to wake up
+        pulseBtn.addEventListener('click', awakenSystem);
+
+        // Initialize the first timer on page load
+        resetTimer();
+    </script>
+</body>
+</html>
