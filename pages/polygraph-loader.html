@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polygraph // Data Loader</title>
+    <style>
+        :root {
+            --bg-base: #070707;
+            --gold: #d4af37;
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.8);
+            --text-main: #eaeaea;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-base);
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            color: var(--text-main);
+        }
+
+        /* Dummy content behind the loader */
+        .dashboard-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-size: 1.5rem;
+            letter-spacing: 3px;
+            color: var(--gold);
+            text-transform: uppercase;
+        }
+
+        /* The Loader Overlay */
+        .loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg-base);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s;
+        }
+
+        .loader-overlay.complete {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        /* Canvas for the EKG line */
+        #polygraph-canvas {
+            width: 100%;
+            max-width: 600px;
+            height: 200px;
+            /* Subtle grid background to look like medical/tactical paper */
+            background-image: 
+                linear-gradient(rgba(212, 175, 55, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212, 175, 55, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            border-radius: 4px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* Typography */
+        .loading-text {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            color: var(--rose);
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--rose-glow);
+        }
+
+        .progress-percentage {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--gold);
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Content to reveal -->
+    <div class="dashboard-content">
+        [ SYSTEM DASHBOARD ACTIVE ]
+    </div>
+
+    <!-- The Loader -->
+    <div class="loader-overlay" id="loader-overlay">
+        <canvas id="polygraph-canvas"></canvas>
+        <div class="loading-text" id="status-text">DECRYPTING NEURAL PATHWAYS</div>
+        <div class="progress-percentage" id="progress-text">00%</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('polygraph-canvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('loader-overlay');
+        const progressText = document.getElementById('progress-text');
+        const statusText = document.getElementById('status-text');
+
+        // Set internal canvas resolution
+        canvas.width = 600;
+        canvas.height = 200;
+
+        let progress = 0;
+        let x = 0;
+        let prevX = 0;
+        let prevY = canvas.height / 2;
+        
+        // Simulating a loading process
+        const loadInterval = setInterval(() => {
+            // Randomize the loading speed slightly for realism
+            progress += Math.random() * 1.5;
+            
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(loadInterval);
+                
+                // Update text to show completion
+                statusText.textContent = "BIOMETRICS STABILIZED";
+                statusText.style.color = "var(--gold)";
+                
+                // Fade out the overlay after a short delay
+                setTimeout(() => {
+                    overlay.classList.add('complete');
+                }, 1000);
+            }
+            
+            // Format to 2 digits with a leading zero if needed
+            progressText.textContent = Math.floor(progress).toString().padStart(2, '0') + '%';
+        }, 50);
+
+        // Drawing the Polygraph Line
+        function drawPolygraph() {
+            // Create a fading trail effect by drawing a semi-transparent black rectangle over the canvas
+            ctx.fillStyle = 'rgba(7, 7, 7, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const yCenter = canvas.height / 2;
+            let currentY = yCenter;
+            
+            // The closer progress is to 100, the lower the chaos multiplier
+            // Chaos goes from 1.0 down to 0.0
+            const chaos = (100 - progress) / 100;
+
+            // Generate spikes based on the current chaos level
+            if (Math.random() > 0.85) {
+                // Large spikes
+                currentY += (Math.random() - 0.5) * 150 * chaos;
+            } else {
+                // Micro tremors
+                currentY += (Math.random() - 0.5) * 15 * chaos;
+            }
+
+            // Draw the line segment
+            ctx.beginPath();
+            ctx.moveTo(prevX, prevY);
+            ctx.lineTo(x, currentY);
+            
+            // Color transitions from aggressive Rose to calm Gold as it finishes
+            if (progress > 90) {
+                ctx.strokeStyle = '#d4af37'; // Gold
+                ctx.shadowColor = 'rgba(212, 175, 55, 0.5)';
+            } else {
+                ctx.strokeStyle = '#8b0000'; // Rose Gem
+                ctx.shadowColor = 'rgba(139, 0, 0, 0.8)';
+            }
+            
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+
+            // Move forward
+            prevX = x;
+            prevY = currentY;
+            x += 6; // Speed of the scan moving left to right
+
+            // Reset to left side when it hits the right edge
+            if (x >= canvas.width) {
+                x = 0;
+                prevX = 0;
+                // Add a bright scanline bar wipe effect
+                ctx.fillStyle = 'rgba(212, 175, 55, 0.3)';
+                ctx.fillRect(0, 0, 5, canvas.height);
+            }
+
+            // Continue animation if overlay is still visible
+            if (!overlay.classList.contains('complete')) {
+                requestAnimationFrame(drawPolygraph);
+            }
+        }
+
+        // Start the canvas animation
+        drawPolygraph();
+    </script>
+</body>
+</html>
