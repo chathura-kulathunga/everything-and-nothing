@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost // Context Menu</title>
+    <style>
+        :root {
+            --bg-base: #070707;
+            --menu-bg: rgba(12, 12, 12, 0.85);
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-dim: rgba(139, 0, 0, 0.15);
+            --text-main: #eaeaea;
+            --text-muted: #666;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            /* A subtle background pattern for depth */
+            background-image: radial-gradient(circle at center, #111 0%, var(--bg-base) 100%);
+        }
+
+        .instructions {
+            text-align: center;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* The Custom Context Menu */
+        .ghost-menu {
+            position: absolute;
+            width: 220px;
+            background: var(--menu-bg);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9), inset 0 0 10px rgba(212, 175, 55, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 8px 0;
+            z-index: 10000;
+            
+            /* Hidden by default */
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.95);
+            transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.2s;
+        }
+
+        .ghost-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+        }
+
+        /* Menu Items */
+        .menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            cursor: pointer;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+        }
+
+        .menu-item:hover {
+            background: var(--rose-dim);
+            color: var(--gold);
+            padding-left: 25px; /* Slight indent on hover */
+            border-left: 2px solid var(--rose);
+        }
+
+        .menu-item span.shortcut {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        /* Separator Line */
+        .menu-divider {
+            height: 1px;
+            background: var(--gold-dim);
+            margin: 6px 0;
+        }
+
+        /* Danger Item (Red text by default) */
+        .menu-item.danger {
+            color: var(--rose);
+        }
+        
+        .menu-item.danger:hover {
+            background: rgba(139, 0, 0, 0.3);
+            color: #fff;
+            border-left-color: #ff3333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="instructions">
+        RIGHT-CLICK ANYWHERE TO INITIALIZE COMMAND PROTOCOL
+    </div>
+
+    <!-- Custom Menu Structure -->
+    <div class="ghost-menu" id="context-menu">
+        <div class="menu-item" onclick="executeCommand('Inspect Payload')">
+            Inspect Payload <span class="shortcut">Ctrl+I</span>
+        </div>
+        <div class="menu-item" onclick="executeCommand('Extract Data')">
+            Extract Data <span class="shortcut">Ctrl+E</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" onclick="executeCommand('Bypass Node')">
+            Bypass Node <span class="shortcut">Alt+B</span>
+        </div>
+        <div class="menu-item danger" onclick="executeCommand('Purge Memory')">
+            Purge Memory <span class="shortcut">Del</span>
+        </div>
+    </div>
+
+    <script>
+        const contextMenu = document.getElementById('context-menu');
+        
+        // Intercept the default right-click
+        window.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); // Stop the browser menu from showing
+
+            // Get exact coordinates of the click
+            let x = e.clientX;
+            let y = e.clientY;
+
+            // Get window and menu dimensions to prevent it from clipping off-screen
+            const winWidth = window.innerWidth;
+            const winHeight = window.innerHeight;
+            const menuWidth = contextMenu.offsetWidth || 220;
+            const menuHeight = contextMenu.offsetHeight || 160;
+
+            // Adjust X if it goes off the right edge
+            if (x + menuWidth > winWidth) {
+                x = winWidth - menuWidth - 10;
+            }
+
+            // Adjust Y if it goes off the bottom edge
+            if (y + menuHeight > winHeight) {
+                y = winHeight - menuHeight - 10;
+            }
+
+            // Position and show the menu
+            contextMenu.style.left = `${x}px`;
+            contextMenu.style.top = `${y}px`;
+            contextMenu.classList.add('active');
+        });
+
+        // Hide the menu if the user clicks anywhere else
+        window.addEventListener('click', (e) => {
+            if (e.target !== contextMenu) {
+                contextMenu.classList.remove('active');
+            }
+        });
+
+        // Hide the menu if the user presses the Escape key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                contextMenu.classList.remove('active');
+            }
+        });
+
+        // Dummy function to handle clicks on the menu items
+        function executeCommand(commandName) {
+            console.log(`[EXECUTING]: ${commandName}`);
+            // You can trigger actual UI changes or fetch requests here
+            contextMenu.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
