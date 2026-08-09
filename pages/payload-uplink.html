@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payload Uplink // Dropzone</title>
+    <style>
+        :root {
+            --bg-base: #070707;
+            --surface: rgba(15, 15, 15, 0.8);
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.3);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.5);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+            --success: #00ff41;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-base);
+            font-family: 'Courier New', Courier, monospace;
+            color: var(--text-main);
+        }
+
+        /* The Dropzone Container */
+        .dropzone-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 250px;
+            background: var(--surface);
+            border: 2px dashed var(--text-muted);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* Active Drag State */
+        .dropzone-wrapper.drag-active {
+            border-color: var(--gold);
+            background: rgba(212, 175, 55, 0.05);
+            box-shadow: 0 0 20px var(--gold-dim), inset 0 0 30px var(--gold-dim);
+            transform: scale(1.02);
+        }
+
+        /* Typography */
+        .icon {
+            font-size: 2.5rem;
+            color: var(--gold);
+            margin-bottom: 15px;
+            pointer-events: none;
+            transition: color 0.3s;
+        }
+
+        .main-text {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            pointer-events: none;
+            margin-bottom: 8px;
+        }
+
+        .sub-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        /* Hidden File Input for click-to-upload fallback */
+        .file-input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        /* Tactical Scanner Line */
+        .scanner-line {
+            position: absolute;
+            top: -10px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--rose);
+            box-shadow: 0 0 15px 5px var(--rose-glow);
+            opacity: 0;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* Scanning Animation Class */
+        .dropzone-wrapper.scanning .scanner-line {
+            opacity: 1;
+            animation: scanSweep 1.5s ease-in-out infinite;
+        }
+        
+        .dropzone-wrapper.scanning .icon,
+        .dropzone-wrapper.scanning .main-text,
+        .dropzone-wrapper.scanning .sub-text {
+            opacity: 0.3;
+        }
+
+        @keyframes scanSweep {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Success State */
+        .dropzone-wrapper.success {
+            border-style: solid;
+            border-color: var(--gold);
+            background: rgba(212, 175, 55, 0.1);
+        }
+        
+        .dropzone-wrapper.success .icon {
+            color: var(--gold);
+        }
+
+        .file-data {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--gold);
+            background: rgba(0,0,0,0.5);
+            padding: 8px 15px;
+            border-left: 2px solid var(--rose);
+            max-width: 80%;
+            word-break: break-all;
+            display: none;
+        }
+        
+        .dropzone-wrapper.success .file-data {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dropzone-wrapper" id="dropzone">
+        <input type="file" class="file-input" id="file-input" multiple>
+        
+        <div class="scanner-line"></div>
+        
+        <div class="icon" id="dz-icon">⇪</div>
+        <div class="main-text" id="dz-main-text">ESTABLISH UPLINK</div>
+        <div class="sub-text" id="dz-sub-text">Drag payload here or click to browse</div>
+        
+        <div class="file-data" id="file-data"></div>
+    </div>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const mainText = document.getElementById('dz-main-text');
+        const subText = document.getElementById('dz-sub-text');
+        const icon = document.getElementById('dz-icon');
+        const fileData = document.getElementById('file-data');
+
+        // Prevent default browser behavior (opening the file in a new tab)
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight dropzone on drag over
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => {
+                if (!dropzone.classList.contains('scanning')) {
+                    dropzone.classList.add('drag-active');
+                    mainText.textContent = "UPLINK DETECTED";
+                    mainText.style.color = "var(--gold)";
+                }
+            }, false);
+        });
+
+        // Remove highlight on drag leave
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => {
+                dropzone.classList.remove('drag-active');
+                if (!dropzone.classList.contains('scanning') && !dropzone.classList.contains('success')) {
+                    mainText.textContent = "ESTABLISH UPLINK";
+                    mainText.style.color = "var(--text-main)";
+                }
+            }, false);
+        });
+
+        // Handle dropped files
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }, false);
+
+        // Handle clicked files (fallback)
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            
+            const file = files[0]; // Just grabbing the first one for this demo
+            
+            // Format file size
+            const sizeInKB = (file.size / 1024).toFixed(2);
+            
+            // Initiate Scanning Phase
+            dropzone.classList.add('scanning');
+            dropzone.classList.remove('success');
+            fileInput.disabled = true; // Prevent clicks during scan
+            
+            mainText.textContent = "ANALYZING PAYLOAD...";
+            mainText.style.color = "var(--rose)";
+            subText.textContent = "Checking for cryptographic signatures";
+            fileData.style.display = 'none';
+
+            // Simulate server upload delay
+            setTimeout(() => {
+                // Success Phase
+                dropzone.classList.remove('scanning');
+                dropzone.classList.add('success');
+                
+                icon.textContent = "✓";
+                mainText.textContent = "UPLINK SECURED";
+                mainText.style.color = "var(--gold)";
+                subText.textContent = "Data successfully encrypted and stored.";
+                
+                // Readout file details
+                fileData.innerHTML = `
+                    <strong style="color: #fff;">FILE:</strong> ${file.name}<br>
+                    <strong style="color: #fff;">SIZE:</strong> ${sizeInKB} KB<br>
+                    <strong style="color: #fff;">TYPE:</strong> ${file.type || 'unknown/binary'}
+                `;
+                fileData.style.display = 'block';
+                
+                fileInput.disabled = false;
+            }, 2500); // 2.5 second scan
+        }
+    </script>
+</body>
+</html>
