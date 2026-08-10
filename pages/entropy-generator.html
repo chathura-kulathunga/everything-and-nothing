@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinetic Entropy Generator</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: rgba(15, 15, 15, 0.8);
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.15);
+            --rose: #8b0000;
+            --text-main: #eaeaea;
+            --text-muted: #666;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .entropy-module {
+            width: 100%;
+            max-width: 500px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            padding: 25px;
+            border-radius: 4px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9);
+        }
+
+        .module-header {
+            font-size: 1.1rem;
+            color: var(--gold);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .module-subtext {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        /* Interactive Canvas Area */
+        .canvas-container {
+            width: 100%;
+            height: 200px;
+            background: #000;
+            border: 1px solid var(--text-muted);
+            position: relative;
+            cursor: crosshair;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Progress Bar */
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: #111;
+            margin-bottom: 10px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--gold);
+            transition: width 0.1s ease;
+            box-shadow: 0 0 10px var(--gold);
+        }
+
+        /* Generated Key Output */
+        .key-output {
+            width: 100%;
+            background: rgba(0,0,0,0.6);
+            border: 1px dashed var(--gold-dim);
+            color: var(--text-muted);
+            padding: 15px;
+            font-size: 0.85rem;
+            word-break: break-all;
+            text-align: center;
+            min-height: 48px;
+            transition: all 0.3s;
+        }
+        
+        .key-output.success {
+            color: var(--gold);
+            border-style: solid;
+            border-color: var(--gold);
+            background: rgba(212, 175, 55, 0.05);
+            text-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="entropy-module">
+        <div class="module-header">Cryptographic Key Gen</div>
+        <div class="module-subtext">Move your cursor erratically inside the black sector to generate mathematical randomness (entropy) for your secure key.</div>
+        
+        <div class="canvas-container" id="canvas-container">
+            <canvas id="entropy-canvas"></canvas>
+        </div>
+
+        <div class="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div class="key-output" id="key-output">
+            [ AWAITING ENTROPY GATHERING ]
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('entropy-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const progressFill = document.getElementById('progress-fill');
+        const keyOutput = document.getElementById('key-output');
+
+        // Setup Canvas size
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+
+        let entropyCount = 0;
+        const requiredEntropy = 500; // Amount of movement required
+        let isComplete = false;
+        const nodes = [];
+
+        // Track Mouse
+        let mouse = { x: -100, y: -100 };
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isComplete) return;
+
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+
+            // Generate entropy on movement
+            entropyCount += 1.5;
+            
+            // Add a visual node where the mouse is
+            if (Math.random() > 0.5) {
+                nodes.push({ x: mouse.x, y: mouse.y, life: 1 });
+            }
+
+            updateProgress();
+        });
+
+        // Ensure canvas clears if mouse leaves
+        canvas.addEventListener('mouseleave', () => {
+            mouse.x = -100;
+            mouse.y = -100;
+        });
+
+        function updateProgress() {
+            let percentage = (entropyCount / requiredEntropy) * 100;
+            if (percentage >= 100) {
+                percentage = 100;
+                completeGeneration();
+            }
+            progressFill.style.width = percentage + '%';
+        }
+
+        function completeGeneration() {
+            isComplete = true;
+            
+            // Generate a fake SHA-256 style hash
+            const chars = '0123456789abcdef';
+            let hash = '';
+            for (let i = 0; i < 64; i++) {
+                hash += chars[Math.floor(Math.random() * chars.length)];
+            }
+            
+            // Update UI
+            keyOutput.textContent = hash;
+            keyOutput.classList.add('success');
+            progressFill.style.background = 'var(--rose)'; // Flash to rose on completion
+            progressFill.style.boxShadow = '0 0 10px var(--rose)';
+        }
+
+        function drawFrame() {
+            // Fade effect for trails
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (isComplete) {
+                // If done, draw a grid to look "locked in"
+                ctx.strokeStyle = 'rgba(212, 175, 55, 0.2)';
+                ctx.lineWidth = 1;
+                for(let i=0; i<canvas.width; i+=20) {
+                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+                }
+                for(let i=0; i<canvas.height; i+=20) {
+                    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+                }
+                return; // Stop animating nodes
+            }
+
+            // Draw and connect nodes
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                let n = nodes[i];
+                
+                // Connect to mouse
+                ctx.beginPath();
+                ctx.moveTo(n.x, n.y);
+                ctx.lineTo(mouse.x, mouse.y);
+                ctx.strokeStyle = `rgba(212, 175, 55, ${n.life})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+
+                // Fade out
+                n.life -= 0.02;
+                if (n.life <= 0) {
+                    nodes.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(drawFrame);
+        }
+
+        drawFrame();
+    </script>
+</body>
+</html>
