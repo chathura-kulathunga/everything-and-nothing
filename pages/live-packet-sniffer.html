@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical Packet Sniffer</title>
+    <style>
+        :root {
+            --bg-base: #070707;
+            --surface: #111;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.5);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+            --safe: #00ff41; /* Terminal Green */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Widget Container */
+        .sniffer-widget {
+            width: 100%;
+            max-width: 550px;
+            height: 400px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9), inset 0 0 15px rgba(212, 175, 55, 0.05);
+            overflow: hidden;
+        }
+
+        /* Header & Controls */
+        .sniffer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.6);
+            border-bottom: 1px solid var(--gold-dim);
+        }
+
+        .header-title {
+            color: var(--gold);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Pulsing recording dot */
+        .rec-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--rose);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--rose);
+            animation: pulse 1.5s infinite;
+        }
+
+        .rec-dot.paused {
+            background-color: var(--text-muted);
+            box-shadow: none;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .btn-toggle {
+            background: transparent;
+            border: 1px solid var(--text-muted);
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .btn-toggle:hover, .btn-toggle.active {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        /* Live Feed Log Area */
+        .feed-container {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* Custom Scrollbar */
+        .feed-container::-webkit-scrollbar { width: 4px; }
+        .feed-container::-webkit-scrollbar-track { background: transparent; }
+        .feed-container::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
+
+        /* Individual Packet Styling */
+        .packet {
+            font-size: 0.75rem;
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.4);
+            border-left: 2px solid var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-main);
+            animation: slideDown 0.2s ease-out forwards;
+        }
+
+        .packet.safe { border-left-color: var(--safe); }
+        .packet.anomaly { 
+            border-left-color: var(--rose); 
+            background: rgba(139, 0, 0, 0.1);
+            color: var(--rose);
+        }
+
+        .packet-data { display: flex; gap: 15px; }
+        .packet-time { color: var(--text-muted); }
+        .packet-hex { color: #888; font-size: 0.7rem; }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sniffer-widget">
+        <div class="sniffer-header">
+            <div class="header-title">
+                <div class="rec-dot" id="rec-status"></div>
+                ETH0 // PACKET INTERCEPT
+            </div>
+            <button class="btn-toggle" id="freeze-btn">FREEZE STREAM</button>
+        </div>
+        
+        <div class="feed-container" id="feed">
+            <!-- Packets inject here -->
+        </div>
+    </div>
+
+    <script>
+        const feed = document.getElementById('feed');
+        const freezeBtn = document.getElementById('freeze-btn');
+        const recStatus = document.getElementById('rec-status');
+        
+        let isFrozen = false;
+        let snifferInterval;
+        const MAX_PACKETS = 40; // Prevent DOM bloat
+
+        // Toggle feed state
+        freezeBtn.addEventListener('click', () => {
+            isFrozen = !isFrozen;
+            if (isFrozen) {
+                freezeBtn.classList.add('active');
+                freezeBtn.textContent = 'RESUME STREAM';
+                recStatus.classList.add('paused');
+            } else {
+                freezeBtn.classList.remove('active');
+                freezeBtn.textContent = 'FREEZE STREAM';
+                recStatus.classList.remove('paused');
+            }
+        });
+
+        // Helper to generate random IP
+        const randomIP = () => Array.from({length: 4}, () => Math.floor(Math.random() * 256)).join('.');
+        
+        // Helper to generate random Hex block
+        const randomHex = () => Math.random().toString(16).substr(2, 8).toUpperCase();
+
+        function injectPacket() {
+            if (isFrozen) return;
+
+            const packet = document.createElement('div');
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
+            const protocols = ['TCP', 'UDP', 'ICMP', 'HTTP'];
+            const protocol = protocols[Math.floor(Math.random() * protocols.length)];
+            
+            // 15% chance to flag as a threat/anomaly
+            const isAnomaly = Math.random() > 0.85;
+            
+            packet.className = `packet ${isAnomaly ? 'anomaly' : 'safe'}`;
+            
+            packet.innerHTML = `
+                <div class="packet-data">
+                    <span class="packet-time">[${time}]</span>
+                    <span>${protocol}</span>
+                    <span>SRC: ${randomIP()}</span>
+                    <span>DST: ${randomIP()}</span>
+                </div>
+                <div class="packet-hex">0x${randomHex()}</div>
+            `;
+
+            // Prepend so new items appear at the top
+            feed.prepend(packet);
+
+            // Keep DOM clean by removing old nodes
+            if (feed.children.length > MAX_PACKETS) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        // Run the sniffer at a randomized interval for realism
+        (function loop() {
+            setTimeout(() => {
+                injectPacket();
+                loop();
+            }, Math.random() * 800 + 100); // Between 100ms and 900ms
+        })();
+    </script>
+</body>
+</html>
