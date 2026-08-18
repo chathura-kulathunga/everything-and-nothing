@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phantom Proxy // Router</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: rgba(10, 10, 10, 0.7);
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.8);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: var(--text-main);
+        }
+
+        /* The main widget container */
+        .proxy-widget {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            background: #000;
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9), inset 0 0 20px rgba(212, 175, 55, 0.05);
+            overflow: hidden;
+        }
+
+        /* Canvas for the node network */
+        #network-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Glassmorphic UI Overlay */
+        .ui-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            padding: 20px 30px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            text-align: center;
+            width: 85%;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+        }
+
+        .status-text {
+            font-size: 0.9rem;
+            color: var(--gold);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            min-height: 1.2rem;
+        }
+
+        .btn-connect {
+            padding: 12px 25px;
+            background: transparent;
+            border: 1px solid var(--rose);
+            color: var(--rose);
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-connect:hover {
+            background: var(--rose);
+            color: var(--text-main);
+            box-shadow: 0 0 20px var(--rose-glow);
+        }
+
+        .btn-connect:disabled {
+            border-color: var(--text-muted);
+            color: var(--text-muted);
+            background: transparent;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* Scanline effect */
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1),
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="proxy-widget">
+        <canvas id="network-canvas"></canvas>
+        <div class="scanlines"></div>
+        
+        <div class="ui-overlay">
+            <div class="status-text" id="status-text">NETWORK IDLE</div>
+            <button class="btn-connect" id="btn-connect">Establish Secure Tunnel</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('network-canvas');
+        const ctx = canvas.getContext('2d');
+        const btnConnect = document.getElementById('btn-connect');
+        const statusText = document.getElementById('status-text');
+
+        let width, height;
+        let nodes = [];
+        const NODE_COUNT = 40;
+        
+        // Routing variables
+        let isRouting = false;
+        let routePath = [];
+        let currentRouteIndex = 0;
+        let packetPos = { x: 0, y: 0 };
+        let packetTrail = [];
+
+        function initCanvas() {
+            width = canvas.width = canvas.parentElement.clientWidth;
+            height = canvas.height = canvas.parentElement.clientHeight;
+            
+            // Generate random nodes
+            nodes = [];
+            for (let i = 0; i < NODE_COUNT; i++) {
+                nodes.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: Math.random() * 2 + 1,
+                    pulse: Math.random() * Math.PI * 2 // Offset for pulsing animation
+                });
+            }
+        }
+
+        // Calculate distance between two nodes
+        function getDistance(n1, n2) {
+            return Math.sqrt(Math.pow(n2.x - n1.x, 2) + Math.pow(n2.y - n1.y, 2));
+        }
+
+        // Generate a random path through 5-7 nodes
+        function generateRoute() {
+            routePath = [];
+            let current = nodes[Math.floor(Math.random() * nodes.length)];
+            routePath.push(current);
+
+            const hops = Math.floor(Math.random() * 3) + 4; // 4 to 6 hops
+
+            for (let i = 0; i < hops; i++) {
+                // Find a random node that is relatively close but not the same
+                let nextNode;
+                let attempts = 0;
+                do {
+                    nextNode = nodes[Math.floor(Math.random() * nodes.length)];
+                    attempts++;
+                } while ((nextNode === current || getDistance(current, nextNode) > 250) && attempts < 20);
+                
+                routePath.push(nextNode);
+                current = nextNode;
+            }
+            
+            currentRouteIndex = 0;
+            packetPos = { x: routePath[0].x, y: routePath[0].y };
+            packetTrail = [];
+        }
+
+        function startRouting() {
+            if (isRouting) return;
+            
+            isRouting = true;
+            btnConnect.disabled = true;
+            btnConnect.textContent = "ENCRYPTING...";
+            statusText.textContent = "BOUNCING SIGNAL VIA PROXIES";
+            statusText.style.color = "var(--rose)";
+            
+            generateRoute();
+        }
+
+        btnConnect.addEventListener('click', startRouting);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Clear with fade for motion blur
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.3)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw all static nodes
+            nodes.forEach(node => {
+                node.pulse += 0.05;
+                const alpha = (Math.sin(node.pulse) + 1) / 4 + 0.1; // Pulsing opacity
+                
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(212, 175, 55, ${alpha})`; // Gold
+                ctx.fill();
+            });
+
+            // Handle active routing animation
+            if (isRouting && currentRouteIndex < routePath.length - 1) {
+                const target = routePath[currentRouteIndex + 1];
+                
+                // Move packet towards target
+                const dx = target.x - packetPos.x;
+                const dy = target.y - packetPos.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                // Speed of the packet
+                const speed = 12;
+                
+                if (dist < speed) {
+                    // Reached node
+                    packetPos.x = target.x;
+                    packetPos.y = target.y;
+                    currentRouteIndex++;
+                    
+                    // Flash node when hit
+                    ctx.beginPath();
+                    ctx.arc(target.x, target.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = 'var(--rose)';
+                    ctx.fill();
+                } else {
+                    packetPos.x += (dx / dist) * speed;
+                    packetPos.y += (dy / dist) * speed;
+                }
+
+                // Add to trail
+                packetTrail.push({ x: packetPos.x, y: packetPos.y });
+                if (packetTrail.length > 25) packetTrail.shift();
+
+                // Draw completed route lines
+                ctx.beginPath();
+                ctx.moveTo(routePath[0].x, routePath[0].y);
+                for (let i = 1; i <= currentRouteIndex; i++) {
+                    ctx.lineTo(routePath[i].x, routePath[i].y);
+                }
+                ctx.strokeStyle = 'rgba(139, 0, 0, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Draw active trail
+                if (packetTrail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(packetTrail[0].x, packetTrail[0].y);
+                    for (let i = 1; i < packetTrail.length; i++) {
+                        ctx.lineTo(packetTrail[i].x, packetTrail[i].y);
+                    }
+                    ctx.strokeStyle = 'var(--rose)';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = 'var(--rose)';
+                    ctx.stroke();
+                    ctx.shadowBlur = 0; // reset
+                }
+
+                // Check for completion
+                if (currentRouteIndex >= routePath.length - 1) {
+                    isRouting = false;
+                    statusText.textContent = "TUNNEL SECURED";
+                    statusText.style.color = "var(--gold)";
+                    btnConnect.textContent = "CONNECTION ESTABLISHED";
+                    btnConnect.style.borderColor = "var(--gold)";
+                    btnConnect.style.color = "var(--gold)";
+                    
+                    // Reset after delay
+                    setTimeout(() => {
+                        statusText.textContent = "NETWORK IDLE";
+                        statusText.style.color = "var(--gold)";
+                        btnConnect.textContent = "Establish Secure Tunnel";
+                        btnConnect.style.borderColor = "var(--rose)";
+                        btnConnect.style.color = "var(--rose)";
+                        btnConnect.disabled = false;
+                        packetTrail = [];
+                        routePath = [];
+                    }, 3000);
+                }
+            }
+        }
+
+        // Setup and start
+        window.addEventListener('resize', initCanvas);
+        initCanvas();
+        animate();
+    </script>
+</body>
+</html>
