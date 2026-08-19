@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A.E.G.I.S. // Node Matrix</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: #0a0a0a;
+            --gold: #d4af37;
+            --gold-glow: rgba(212, 175, 55, 0.4);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.5);
+            --text-main: #eaeaea;
+            --text-muted: #444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        .auth-container {
+            background: var(--surface);
+            padding: 40px;
+            border: 1px solid var(--text-muted);
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(212, 175, 55, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .header {
+            font-size: 1.2rem;
+            color: var(--gold);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px var(--gold-glow);
+        }
+
+        /* Canvas handles both the nodes and the connecting lines */
+        #matrix-canvas {
+            background: transparent;
+            cursor: crosshair;
+            touch-action: none; /* Prevents scrolling while drawing on mobile */
+        }
+
+        .status-feed {
+            margin-top: 25px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            min-height: 20px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+
+        /* Shake animation for failed attempts */
+        @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+
+        .shake {
+            animation: errorShake 0.4s ease-in-out;
+            border-color: var(--rose);
+            box-shadow: 0 0 30px var(--rose-glow);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container" id="auth-box">
+        <div class="header">NODE AUTHORIZATION</div>
+        
+        <canvas id="matrix-canvas" width="300" height="300"></canvas>
+        
+        <div class="status-feed" id="status-text">AWAITING INPUT...</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status-text');
+        const authBox = document.getElementById('auth-box');
+
+        // Grid setup
+        const cols = 3;
+        const rows = 3;
+        const spacing = 100;
+        const offsetX = 50;
+        const offsetY = 50;
+        const nodeRadius = 8;
+        const hitRadius = 30; // How close the mouse needs to be to snap to a node
+
+        let nodes = [];
+        let pattern = []; // Stores the indices of the nodes drawn
+        let isDrawing = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let isLocked = false;
+
+        // The master passcode (Indices: 0-8. 0,3,6 is left column. 7,8 is bottom row)
+        const CORRECT_PATTERN = [0, 3, 6, 7, 8]; 
+
+        // Initialize Nodes
+        let index = 0;
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                nodes.push({
+                    x: offsetX + x * spacing,
+                    y: offsetY + y * spacing,
+                    index: index++
+                });
+            }
+        }
+
+        function drawMatrix(state = 'default') {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let lineColor = 'rgba(212, 175, 55, 0.5)'; // Gold
+            let glowColor = 'rgba(212, 175, 55, 0.2)';
+            
+            if (state === 'error') {
+                lineColor = 'rgba(139, 0, 0, 0.8)'; // Rose
+                glowColor = 'rgba(139, 0, 0, 0.4)';
+            } else if (state === 'success') {
+                lineColor = '#d4af37';
+                glowColor = 'rgba(212, 175, 55, 0.8)';
+            }
+
+            // Draw connecting lines
+            if (pattern.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(nodes[pattern[0]].x, nodes[pattern[0]].y);
+                
+                for (let i = 1; i < pattern.length; i++) {
+                    ctx.lineTo(nodes[pattern[i]].x, nodes[pattern[i]].y);
+                }
+                
+                // Draw line to current mouse position if actively drawing
+                if (isDrawing && state === 'default') {
+                    ctx.lineTo(mouseX, mouseY);
+                }
+
+                ctx.strokeStyle = lineColor;
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = glowColor;
+                ctx.stroke();
+                ctx.shadowBlur = 0; // Reset
+            }
+
+            // Draw Nodes
+            nodes.forEach(node => {
+                const isSelected = pattern.includes(node.index);
+                
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, isSelected ? nodeRadius * 1.5 : nodeRadius, 0, Math.PI * 2);
+                
+                if (isSelected) {
+                    ctx.fillStyle = lineColor;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = glowColor;
+                } else {
+                    ctx.fillStyle = '#444'; // Inactive node color
+                    ctx.shadowBlur = 0;
+                }
+                
+                ctx.fill();
+                
+                // Outer ring for selected nodes
+                if (isSelected) {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, hitRadius * 0.8, 0, Math.PI * 2);
+                    ctx.strokeStyle = glowColor;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            });
+        }
+
+        function checkNodeHit(x, y) {
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                const dist = Math.hypot(node.x - x, node.y - y);
+                
+                if (dist < hitRadius && !pattern.includes(node.index)) {
+                    pattern.push(node.index);
+                    // Haptic feedback for mobile devices (if supported)
+                    if (navigator.vibrate) navigator.vibrate(20);
+                    break;
+                }
+            }
+        }
+
+        function startInteraction(x, y) {
+            if (isLocked) return;
+            pattern = [];
+            isDrawing = true;
+            statusText.textContent = "RECORDING SEQUENCE...";
+            statusText.style.color = "var(--gold)";
+            checkNodeHit(x, y);
+            drawMatrix();
+        }
+
+        function moveInteraction(x, y) {
+            if (!isDrawing || isLocked) return;
+            mouseX = x;
+            mouseY = y;
+            checkNodeHit(x, y);
+            drawMatrix();
+        }
+
+        function endInteraction() {
+            if (!isDrawing || isLocked) return;
+            isDrawing = false;
+            
+            if (pattern.length < 2) {
+                // Too short, just reset
+                pattern = [];
+                statusText.textContent = "AWAITING INPUT...";
+                statusText.style.color = "var(--text-muted)";
+                drawMatrix();
+                return;
+            }
+
+            verifyPattern();
+        }
+
+        function verifyPattern() {
+            isLocked = true;
+            
+            // Check if pattern arrays match perfectly
+            const isMatch = pattern.length === CORRECT_PATTERN.length && 
+                          pattern.every((val, index) => val === CORRECT_PATTERN[index]);
+
+            if (isMatch) {
+                drawMatrix('success');
+                statusText.textContent = "ACCESS GRANTED. DECRYPTING...";
+                statusText.style.color = "var(--gold)";
+                
+                // Simulate unlocking process
+                setTimeout(() => {
+                    alert("Sequence Verified. Payload delivered.");
+                    resetSystem();
+                }, 1000);
+            } else {
+                drawMatrix('error');
+                authBox.classList.add('shake');
+                statusText.textContent = "SEQUENCE REJECTED.";
+                statusText.style.color = "var(--rose)";
+                
+                setTimeout(() => {
+                    authBox.classList.remove('shake');
+                    resetSystem();
+                }, 800);
+            }
+        }
+
+        function resetSystem() {
+            pattern = [];
+            isLocked = false;
+            statusText.textContent = "AWAITING INPUT...";
+            statusText.style.color = "var(--text-muted)";
+            drawMatrix();
+        }
+
+        // --- Event Listeners ---
+        
+        // Mouse
+        canvas.addEventListener('mousedown', (e) => startInteraction(e.offsetX, e.offsetY));
+        canvas.addEventListener('mousemove', (e) => moveInteraction(e.offsetX, e.offsetY));
+        window.addEventListener('mouseup', endInteraction);
+
+        // Touch (Mobile)
+        canvas.addEventListener('touchstart', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            startInteraction(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            moveInteraction(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+        });
+        window.addEventListener('touchend', endInteraction);
+
+        // Initial draw
+        drawMatrix();
+    </script>
+</body>
+</html>
