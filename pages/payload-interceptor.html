@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-Day // Payload Interceptor</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: #0a0a0a;
+            --gold: #d4af37;
+            --gold-glow: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.4);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+            --terminal-green: #00ff41;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* --- Dummy Background Form --- */
+        .dummy-form {
+            background: rgba(10,10,10,0.5);
+            padding: 30px;
+            border: 1px solid var(--text-muted);
+            border-radius: 4px;
+            width: 320px;
+        }
+
+        .dummy-form h2 {
+            color: var(--gold);
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .input-field {
+            width: 100%;
+            background: transparent;
+            border: 1px solid #333;
+            color: var(--text-main);
+            padding: 10px;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        .input-field:focus { border-color: var(--gold); }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: var(--gold);
+            color: var(--bg-base);
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- Interceptor Overlay --- */
+        .interceptor-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 5, 5, 0.9);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .interceptor-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .interceptor-modal {
+            width: 100%;
+            max-width: 600px;
+            background: var(--surface);
+            border: 1px solid var(--rose);
+            box-shadow: 0 0 30px var(--rose-glow), inset 0 0 15px rgba(139, 0, 0, 0.1);
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .interceptor-overlay.active .interceptor-modal {
+            transform: scale(1);
+        }
+
+        /* Modal Header */
+        .modal-header {
+            background: var(--rose);
+            color: var(--text-main);
+            padding: 10px 20px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .blinking-alert {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Payload Readout Area */
+        .payload-container {
+            padding: 20px;
+        }
+
+        .data-block {
+            background: rgba(0,0,0,0.6);
+            border: 1px dashed var(--text-muted);
+            padding: 15px;
+            font-size: 0.85rem;
+            color: var(--terminal-green);
+            white-space: pre-wrap;
+            overflow-x: hidden;
+            min-height: 120px;
+            margin-bottom: 20px;
+        }
+
+        .hex-dump {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        /* Action Buttons */
+        .action-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .btn-drop {
+            border: 1px solid var(--rose);
+            color: var(--rose);
+        }
+
+        .btn-drop:hover {
+            background: var(--rose);
+            color: var(--text-main);
+            box-shadow: 0 0 15px var(--rose-glow);
+        }
+
+        .btn-forward {
+            border: 1px solid var(--gold);
+            color: var(--gold);
+        }
+
+        .btn-forward:hover {
+            background: var(--gold);
+            color: var(--bg-base);
+            box-shadow: 0 0 15px var(--gold-glow);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Target Form -->
+    <div class="dummy-form">
+        <h2>Secure Login</h2>
+        <form id="target-form">
+            <input type="text" class="input-field" name="admin_id" placeholder="Admin ID" required autocomplete="off">
+            <input type="password" class="input-field" name="auth_token" placeholder="Passphrase" required>
+            <button type="submit" class="btn-submit">Authenticate</button>
+        </form>
+    </div>
+
+    <!-- The Interceptor -->
+    <div class="interceptor-overlay" id="interceptor-overlay">
+        <div class="interceptor-modal">
+            <div class="modal-header">
+                <span>⚠ OUTGOING PACKET INTERCEPTED</span>
+                <span class="blinking-alert">REQ_HOLD</span>
+            </div>
+            
+            <div class="payload-container">
+                <span class="hex-dump" id="hex-header"></span>
+                <div class="data-block" id="payload-readout"></div>
+                
+                <div class="action-row">
+                    <button class="btn-action btn-drop" id="btn-drop">Drop Packet</button>
+                    <button class="btn-action btn-forward" id="btn-forward">Forward</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('target-form');
+        const overlay = document.getElementById('interceptor-overlay');
+        const payloadReadout = document.getElementById('payload-readout');
+        const hexHeader = document.getElementById('hex-header');
+        const btnDrop = document.getElementById('btn-drop');
+        const btnForward = document.getElementById('btn-forward');
+
+        // Helper to generate a fake hex address
+        const generateHex = () => `0x${Math.random().toString(16).substr(2, 8).toUpperCase()}`;
+
+        // Intercept the form submission
+        form.addEventListener('submit', (e) => {
+            e.preventDefault(); // Stop the request
+            
+            // Extract the form data
+            const formData = new FormData(form);
+            const dataObj = {};
+            formData.forEach((value, key) => {
+                // Obfuscate password visually for realism
+                dataObj[key] = key.includes('token') || key.includes('password') 
+                    ? value.replace(/./g, '*') 
+                    : value;
+            });
+
+            // Create the raw payload visual
+            const timestamp = new Date().toISOString();
+            const rawPayload = `POST /api/v1/auth/verify HTTP/1.1\nHost: secure.internal\nTimestamp: ${timestamp}\nContent-Type: application/json\n\n${JSON.stringify(dataObj, null, 2)}`;
+
+            // Populate modal
+            hexHeader.textContent = `MEM_ADDR: ${generateHex()} | SIZE: ${new Blob([rawPayload]).size} BYTES`;
+            payloadReadout.textContent = ''; // Clear previous
+            
+            // Show modal
+            overlay.classList.add('active');
+
+            // Typewriter effect for the payload readout
+            let i = 0;
+            const typeWriter = setInterval(() => {
+                payloadReadout.textContent += rawPayload.charAt(i);
+                i++;
+                if (i >= rawPayload.length) clearInterval(typeWriter);
+            }, 10); // Very fast typing
+        });
+
+        // Drop the packet (Cancel)
+        btnDrop.addEventListener('click', () => {
+            payloadReadout.style.color = "var(--rose)";
+            payloadReadout.textContent = "\n[!] PACKET DROPPED BY USER. CONNECTION TERMINATED.";
+            
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                payloadReadout.style.color = "var(--terminal-green)";
+                form.reset(); // Clear the form
+            }, 1000);
+        });
+
+        // Forward the packet (Proceed)
+        btnForward.addEventListener('click', () => {
+            payloadReadout.style.color = "var(--gold)";
+            payloadReadout.textContent = "\n[✓] PACKET FORWARDED. AWAITING SERVER RESPONSE...";
+            
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                payloadReadout.style.color = "var(--terminal-green)";
+                alert("Payload successfully sent to the server!");
+                form.reset();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
