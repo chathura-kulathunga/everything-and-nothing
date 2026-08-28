@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O.S.I.R.I.S // Recon Interface</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: rgba(10, 10, 10, 0.8);
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.5);
+            --terminal-green: #00ff41;
+            --text-main: #eaeaea;
+            --text-muted: #555;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .scanner-widget {
+            width: 100%;
+            max-width: 500px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 15px rgba(212, 175, 55, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Input Section --- */
+        .input-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--gold-dim);
+            display: flex;
+            gap: 10px;
+        }
+
+        .target-input {
+            flex-grow: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--text-muted);
+            color: var(--gold);
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            outline: none;
+            letter-spacing: 1px;
+            transition: border-color 0.3s;
+        }
+
+        .target-input:focus {
+            border-color: var(--gold);
+        }
+
+        .btn-scan {
+            background: transparent;
+            border: 1px solid var(--rose);
+            color: var(--rose);
+            padding: 0 20px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-scan:hover, .btn-scan.active {
+            background: var(--rose);
+            color: var(--text-main);
+            box-shadow: 0 0 15px var(--rose-glow);
+        }
+
+        /* --- Radar Visualizer --- */
+        .radar-container {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(212, 175, 55, 0.03) 0px,
+                rgba(212, 175, 55, 0.03) 1px,
+                transparent 1px,
+                transparent 20px
+            );
+            border-bottom: 1px solid var(--gold-dim);
+            overflow: hidden;
+        }
+
+        .radar-core {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 1px solid var(--gold-dim);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radar-core::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1px solid var(--gold);
+            opacity: 0;
+        }
+
+        .radar-container.scanning .radar-core::before {
+            animation: radarPulse 1.5s infinite linear;
+        }
+
+        .sweep-line {
+            position: absolute;
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold));
+            top: 50%;
+            right: 50%;
+            transform-origin: right center;
+            opacity: 0;
+        }
+
+        .radar-container.scanning .sweep-line {
+            opacity: 1;
+            animation: radarSweep 2s infinite linear;
+        }
+
+        @keyframes radarPulse {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; border-color: var(--rose); }
+        }
+
+        @keyframes radarSweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Terminal Output --- */
+        .terminal-output {
+            height: 200px;
+            padding: 15px;
+            background: rgba(0,0,0,0.8);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .terminal-output::-webkit-scrollbar { width: 4px; }
+        .terminal-output::-webkit-scrollbar-thumb { background: var(--gold-dim); }
+
+        .log-line {
+            font-size: 0.8rem;
+            color: var(--terminal-green);
+        }
+
+        .log-line.warning { color: var(--gold); }
+        .log-line.critical { 
+            color: var(--rose); 
+            text-shadow: 0 0 5px var(--rose-glow);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scanner-widget">
+        <div class="input-section">
+            <input type="text" class="target-input" id="target-ip" placeholder="Enter Target IP (e.g., 192.168.1.10)" autocomplete="off">
+            <button class="btn-scan" id="btn-scan">Scan</button>
+        </div>
+
+        <div class="radar-container" id="radar">
+            <div class="radar-core">
+                <div class="sweep-line"></div>
+            </div>
+        </div>
+
+        <div class="terminal-output" id="terminal">
+            <div class="log-line" style="color: var(--text-muted);">> Ready for target enumeration.</div>
+        </div>
+    </div>
+
+    <script>
+        const btnScan = document.getElementById('btn-scan');
+        const targetInput = document.getElementById('target-ip');
+        const radar = document.getElementById('radar');
+        const terminal = document.getElementById('terminal');
+
+        const mockResults = [
+            { text: "> Initializing SYN stealth scan...", delay: 500, type: "normal" },
+            { text: "> Host is up (0.012s latency).", delay: 1200, type: "normal" },
+            { text: "[+] PORT 80/tcp open (http)", delay: 2000, type: "warning" },
+            { text: "[+] PORT 443/tcp open (https)", delay: 2800, type: "warning" },
+            { text: "[!] PORT 22/tcp open (ssh) - Potential entry point", delay: 3500, type: "critical" },
+            { text: "[!] PORT 3306/tcp open (mysql) - Database exposed", delay: 4200, type: "critical" },
+            { text: "> Scan complete. 4 ports open. Logging results...", delay: 5500, type: "normal" }
+        ];
+
+        function appendLog(text, type) {
+            const line = document.createElement('div');
+            line.className = `log-line ${type}`;
+            terminal.appendChild(line);
+            
+            // Typewriter effect
+            let i = 0;
+            const typeWriter = setInterval(() => {
+                line.textContent += text.charAt(i);
+                i++;
+                if (i >= text.length) {
+                    clearInterval(typeWriter);
+                    terminal.scrollTop = terminal.scrollHeight; // Auto-scroll
+                }
+            }, 15);
+        }
+
+        btnScan.addEventListener('click', () => {
+            const target = targetInput.value.trim() || "UNKNOWN_TARGET";
+            
+            // Reset UI
+            terminal.innerHTML = '';
+            btnScan.classList.add('active');
+            btnScan.textContent = "SCANNING";
+            btnScan.disabled = true;
+            radar.classList.add('scanning');
+
+            appendLog(`> TARGET LOCKED: ${target}`, 'normal');
+
+            // Trigger mock scan sequence
+            mockResults.forEach(result => {
+                setTimeout(() => {
+                    appendLog(result.text, result.type);
+                }, result.delay);
+            });
+
+            // End scan
+            setTimeout(() => {
+                btnScan.classList.remove('active');
+                btnScan.textContent = "SCAN";
+                btnScan.disabled = false;
+                radar.classList.remove('scanning');
+            }, 6000);
+        });
+    </script>
+</body>
+</html>
