@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serial Node // Telemetry</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: #0a0a0a;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+            --text-muted: #444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* Deck Container */
+        .telemetry-deck {
+            width: 100%;
+            max-width: 800px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 15px rgba(212, 175, 55, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .deck-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--gold-dim);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .header-title {
+            color: var(--gold);
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--rose);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--rose-glow);
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.4; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1.1); }
+        }
+
+        .header-meta {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        /* Body Layout */
+        .deck-body {
+            display: flex;
+            height: 350px;
+        }
+
+        /* Raw Hex Feed */
+        .hex-feed {
+            width: 40%;
+            padding: 15px;
+            overflow-y: auto;
+            border-right: 1px solid var(--gold-dim);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(212, 175, 55, 0.02) 0px,
+                rgba(212, 175, 55, 0.02) 1px,
+                transparent 1px,
+                transparent 24px
+            );
+        }
+
+        .hex-feed::-webkit-scrollbar { width: 4px; }
+        .hex-feed::-webkit-scrollbar-thumb { background: var(--gold-dim); }
+
+        .hex-line {
+            display: flex;
+            gap: 15px;
+            animation: slideIn 0.2s ease-out forwards;
+        }
+
+        .hex-addr { color: #666; }
+        .hex-data { color: var(--gold); }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-5px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Chart Area */
+        .chart-container {
+            width: 60%;
+            position: relative;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 0.7rem;
+            color: var(--rose);
+            letter-spacing: 2px;
+            z-index: 10;
+        }
+
+        .live-value {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.2rem;
+            color: var(--text-main);
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #222;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="telemetry-deck">
+        <div class="deck-header">
+            <div class="header-title">
+                <div class="status-dot"></div>
+                UPLINK // ACTIVE
+            </div>
+            <div class="header-meta">UART / 115200 BAUD / /dev/ttyUSB0</div>
+        </div>
+        
+        <div class="deck-body">
+            <div class="hex-feed" id="hex-feed"></div>
+            
+            <div class="chart-container">
+                <div class="chart-label">SENSOR 0x1A // NOISE FLOOR</div>
+                <div class="live-value" id="live-val">0.00</div>
+                <canvas id="oscilloscope"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const hexFeed = document.getElementById('hex-feed');
+        const canvas = document.getElementById('oscilloscope');
+        const ctx = canvas.getContext('2d');
+        const liveVal = document.getElementById('live-val');
+
+        // Canvas Setup
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth - 40;
+            canvas.height = canvas.parentElement.clientHeight - 40;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Data arrays
+        const dataPoints = new Array(100).fill(0);
+        let timeStep = 0;
+
+        // Generators
+        const generateHex = () => Math.random().toString(16).substr(2, 2).toUpperCase().padStart(2, '0');
+        const generateAddr = () => '0x' + Math.random().toString(16).substr(2, 4).toUpperCase().padStart(4, '0');
+
+        function generateSensorData() {
+            // Generates a noisy sine wave to simulate analog sensor data
+            timeStep += 0.1;
+            const baseWave = Math.sin(timeStep) * 40;
+            const noise = (Math.random() - 0.5) * 15;
+            return baseWave + noise;
+        }
+
+        function pushHexLog(val) {
+            const line = document.createElement('div');
+            line.className = 'hex-line';
+            
+            // Map the analog value to a hex visual
+            const valHex = Math.abs(Math.floor(val)).toString(16).toUpperCase().padStart(2, '0');
+            
+            line.innerHTML = `
+                <span class="hex-addr">${generateAddr()}</span>
+                <span class="hex-data">${generateHex()} ${generateHex()} ${valHex} ${generateHex()}</span>
+            `;
+            
+            hexFeed.prepend(line);
+            if (hexFeed.children.length > 25) {
+                hexFeed.removeChild(hexFeed.lastChild);
+            }
+        }
+
+        function drawChart() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Grid
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            const centerY = canvas.height / 2;
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+
+            // Draw Waveform
+            ctx.beginPath();
+            const sliceWidth = canvas.width / (dataPoints.length - 1);
+            let x = 0;
+
+            for (let i = 0; i < dataPoints.length; i++) {
+                const y = centerY - dataPoints[i];
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+
+            // Styling the line with the rose-gem color
+            ctx.strokeStyle = 'var(--rose)';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'var(--rose-glow)';
+            ctx.stroke();
+            ctx.shadowBlur = 0; // reset
+        }
+
+        // Main Loop
+        setInterval(() => {
+            const newValue = generateSensorData();
+            
+            // Update array
+            dataPoints.push(newValue);
+            dataPoints.shift();
+            
+            // Update UI
+            liveVal.textContent = newValue.toFixed(2);
+            pushHexLog(newValue);
+            drawChart();
+            
+        }, 100); // 100ms refresh rate
+    </script>
+</body>
+</html>
