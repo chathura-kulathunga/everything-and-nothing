@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ephemeral Key Vault</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: #0f0f0f;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.5);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+            --success: #00ff41;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .vault-card {
+            width: 100%;
+            max-width: 480px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .vault-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .title {
+            color: var(--gold);
+            font-size: 1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .badge {
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--gold);
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            border: 1px solid var(--gold-dim);
+            letter-spacing: 1px;
+        }
+
+        /* The Key Display Area */
+        .key-container {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .key-string {
+            font-size: 0.9rem;
+            color: var(--text-main);
+            letter-spacing: 1px;
+            word-break: break-all;
+            user-select: none; /* Prevent manual highlighting to force using the button */
+        }
+
+        .key-string.destroyed {
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        /* Action Button */
+        .btn-copy {
+            background: transparent;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 10px 20px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            margin-left: 15px;
+        }
+
+        .btn-copy:hover {
+            background: var(--gold);
+            color: var(--bg-base);
+        }
+
+        .btn-copy:disabled {
+            border-color: var(--text-muted);
+            color: var(--text-muted);
+            background: transparent;
+            cursor: not-allowed;
+        }
+
+        /* TTL Burn-down Bar */
+        .ttl-track {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: transparent;
+        }
+
+        .ttl-fill {
+            height: 100%;
+            width: 100%;
+            background: var(--rose);
+            box-shadow: 0 0 10px var(--rose-glow);
+            transform-origin: left;
+            transform: scaleX(0);
+        }
+
+        /* Active countdown animation applied via JS */
+        .ttl-fill.active {
+            transform: scaleX(1);
+            transition: transform 8s linear; /* 8 second TTL */
+        }
+
+        .warning-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="vault-card">
+        <div class="vault-header">
+            <span class="title">Production Secret</span>
+            <span class="badge" id="status-badge">SECURE</span>
+        </div>
+
+        <div class="key-container">
+            <div class="key-string" id="key-display">demo_key_********************************</div>
+            <button class="btn-copy" id="btn-copy">Reveal & Copy</button>
+            
+            <div class="ttl-track">
+                <div class="ttl-fill" id="ttl-bar"></div>
+            </div>
+        </div>
+
+        <div class="warning-text">
+            For security purposes, this key will only be displayed once. After copying, the payload will self-destruct from the DOM.
+        </div>
+    </div>
+
+    <script>
+        const keyDisplay = document.getElementById('key-display');
+        const btnCopy = document.getElementById('btn-copy');
+        const ttlBar = document.getElementById('ttl-bar');
+        const statusBadge = document.getElementById('status-badge');
+
+        // The actual secret key using a safe dummy prefix
+        const RAW_SECRET = "demo_key_9f8d7e6c5b4a3f2d1e0a9b8c7d6e5f4a";
+        const MASKED_SECRET = "demo_key_" + "*".repeat(32);
+        
+        let isRevealed = false;
+        let isDestroyed = false;
+
+        btnCopy.addEventListener('click', () => {
+            if (isDestroyed || isRevealed) return;
+
+            // 1. Copy to clipboard
+            navigator.clipboard.writeText(RAW_SECRET).then(() => {
+                
+                // 2. Reveal in UI
+                isRevealed = true;
+                keyDisplay.textContent = RAW_SECRET;
+                
+                // 3. Update UI states
+                btnCopy.textContent = "COPIED";
+                btnCopy.style.background = "var(--success)";
+                btnCopy.style.borderColor = "var(--success)";
+                btnCopy.style.color = "var(--bg-base)";
+                
+                statusBadge.textContent = "EXPOSED";
+                statusBadge.style.color = "var(--rose)";
+                statusBadge.style.borderColor = "var(--rose)";
+                statusBadge.style.background = "rgba(139, 0, 0, 0.1)";
+
+                // 4. Trigger the TTL Burn-down
+                // We use a small timeout to ensure the browser paints the scaleX(0) before transitioning
+                setTimeout(() => {
+                    ttlBar.style.transform = "scaleX(0)"; // Shrinks to 0 over 8 seconds
+                    ttlBar.style.transition = "transform 8s linear";
+                }, 50);
+
+                // 5. Purge after 8 seconds
+                setTimeout(destroyPayload, 8000);
+
+            }).catch(err => {
+                console.error("Clipboard API failed: ", err);
+                alert("Clipboard access denied. Please allow permissions.");
+            });
+        });
+
+        function destroyPayload() {
+            isDestroyed = true;
+            
+            // Overwrite the variable memory if possible (JS garbage collection handles the rest, but this prevents DOM inspection)
+            keyDisplay.textContent = "KEY_PURGED_FROM_MEMORY";
+            keyDisplay.classList.add('destroyed');
+            
+            // Disable interactions
+            btnCopy.textContent = "DESTROYED";
+            btnCopy.disabled = true;
+            btnCopy.style.background = "transparent";
+            btnCopy.style.borderColor = "var(--text-muted)";
+            btnCopy.style.color = "var(--text-muted)";
+
+            statusBadge.textContent = "PURGED";
+            statusBadge.style.color = "var(--text-muted)";
+            statusBadge.style.borderColor = "var(--text-muted)";
+            statusBadge.style.background = "transparent";
+            
+            ttlBar.style.display = "none";
+        }
+    </script>
+</body>
+</html>
