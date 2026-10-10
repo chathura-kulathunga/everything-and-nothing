@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deadbolt // Kinetic Lock</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: #0a0a0a;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+            --success: #d4af37; /* Using gold for success in this theme */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .action-panel {
+            background: var(--surface);
+            padding: 40px;
+            border: 1px solid var(--gold-dim);
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9), inset 0 0 20px rgba(139, 0, 0, 0.05);
+            max-width: 350px;
+        }
+
+        .panel-title {
+            color: var(--rose);
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .panel-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        /* --- The Kinetic Node --- */
+        .deadbolt-container {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* SVG Ring Styling */
+        .progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg); /* Start from the top */
+        }
+
+        .progress-ring-circle-bg {
+            fill: transparent;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 4;
+        }
+
+        .progress-ring-circle {
+            fill: transparent;
+            stroke: var(--rose);
+            stroke-width: 6;
+            stroke-linecap: round;
+            /* 377 is the circumference of a circle with r=60 (2 * pi * 60) */
+            stroke-dasharray: 377;
+            stroke-dashoffset: 377; 
+            filter: drop-shadow(0 0 8px var(--rose-glow));
+        }
+
+        /* The physical button in the center */
+        .btn-core {
+            position: relative;
+            z-index: 10;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #111;
+            border: 2px solid var(--rose);
+            color: var(--rose);
+            font-size: 0.8rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 0 15px rgba(139, 0, 0, 0.2);
+        }
+
+        /* Hover and Active states */
+        .btn-core:hover {
+            background: #151515;
+            box-shadow: 0 0 20px var(--rose-glow), inset 0 0 20px rgba(139, 0, 0, 0.4);
+        }
+
+        .btn-core:active {
+            transform: scale(0.95);
+        }
+
+        /* Unlocked/Success State */
+        .deadbolt-container.unlocked .btn-core {
+            background: rgba(212, 175, 55, 0.1);
+            border-color: var(--gold);
+            color: var(--gold);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+            cursor: default;
+        }
+
+        .deadbolt-container.unlocked .progress-ring-circle {
+            stroke: var(--gold);
+            filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.6));
+            stroke-dashoffset: 0 !important; /* Lock the ring full */
+            transition: stroke 0.3s ease;
+        }
+
+        .status-text {
+            margin-top: 30px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="action-panel">
+        <div class="panel-title">Purge Database</div>
+        <div class="panel-desc">This action is irreversible. It will sever all external node connections and wipe the active matrix.</div>
+
+        <div class="deadbolt-container" id="deadbolt">
+            <!-- SVG Progress Ring -->
+            <svg class="progress-ring" width="140" height="140">
+                <circle class="progress-ring-circle-bg" cx="70" cy="70" r="60" />
+                <circle class="progress-ring-circle" id="progress-circle" cx="70" cy="70" r="60" />
+            </svg>
+            
+            <button class="btn-core" id="btn-core">Hold</button>
+        </div>
+
+        <div class="status-text" id="status-text">AWAITING AUTHORIZATION</div>
+    </div>
+
+    <script>
+        const btnCore = document.getElementById('btn-core');
+        const deadbolt = document.getElementById('deadbolt');
+        const progressCircle = document.getElementById('progress-circle');
+        const statusText = document.getElementById('status-text');
+
+        // Circle math
+        const radius = progressCircle.r.baseVal.value;
+        const circumference = radius * 2 * Math.PI;
+        
+        // Initial setup
+        progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressCircle.style.strokeDashoffset = circumference;
+
+        // Interaction logic variables
+        let holdTimer;
+        let progress = 0;
+        let isHolding = false;
+        let isUnlocked = false;
+        const HOLD_DURATION = 2500; // 2.5 seconds to unlock
+        const REFRESH_RATE = 20; // 50fps smooth animation
+        const increment = (REFRESH_RATE / HOLD_DURATION) * circumference;
+
+        function setProgress(offset) {
+            progressCircle.style.strokeDashoffset = offset;
+        }
+
+        function startHold(e) {
+            // Prevent default touch behaviors (like text selection or zooming)
+            if(e.type === 'touchstart') e.preventDefault();
+            
+            if (isUnlocked) return;
+            
+            isHolding = true;
+            statusText.textContent = "VERIFYING INTENT...";
+            statusText.style.color = "var(--rose)";
+            
+            // Remove CSS transition for instant JS tracking
+            progressCircle.style.transition = 'none';
+
+            holdTimer = setInterval(() => {
+                progress += increment;
+                const offset = circumference - progress;
+                
+                setProgress(offset);
+
+                if (progress >= circumference) {
+                    completeHold();
+                }
+            }, REFRESH_RATE);
+        }
+
+        function releaseHold() {
+            if (isUnlocked) return;
+            
+            isHolding = false;
+            clearInterval(holdTimer);
+            progress = 0;
+            
+            // Add CSS transition back for a smooth snap-back effect
+            progressCircle.style.transition = 'stroke-dashoffset 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            setProgress(circumference);
+            
+            statusText.textContent = "AWAITING AUTHORIZATION";
+            statusText.style.color = "var(--text-muted)";
+        }
+
+        function completeHold() {
+            clearInterval(holdTimer);
+            isUnlocked = true;
+            
+            deadbolt.classList.add('unlocked');
+            btnCore.textContent = "PURGED";
+            statusText.textContent = "ACTION EXECUTED SUCCESSFULLY";
+            statusText.style.color = "var(--gold)";
+
+            // Execute the actual destructive action here
+            console.log("[SYSTEM] Database purge initialized.");
+        }
+
+        // Mouse Events
+        btnCore.addEventListener('mousedown', startHold);
+        window.addEventListener('mouseup', releaseHold); // Window listener prevents sticking if mouse moves off button
+
+        // Touch Events (Mobile Support)
+        btnCore.addEventListener('touchstart', startHold, {passive: false});
+        window.addEventListener('touchend', releaseHold);
+        window.addEventListener('touchcancel', releaseHold);
+    </script>
+</body>
+</html>
