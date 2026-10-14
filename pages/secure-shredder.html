@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-Day // Secure Shredder</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: #0a0a0a;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-bright: #ff3333;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* The Drop Zone Container */
+        .shredder-widget {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 280px;
+            background: var(--surface);
+            border: 2px dashed var(--text-muted);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+
+        /* Drag-over State (Danger) */
+        .shredder-widget.drag-active {
+            border-color: var(--rose);
+            background: rgba(139, 0, 0, 0.05);
+            box-shadow: 0 0 20px var(--rose-glow), inset 0 0 30px rgba(139, 0, 0, 0.1);
+            transform: scale(1.02);
+        }
+
+        /* Canvas for the Hex Incineration Effect */
+        #incinerator-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to the drop zone */
+            z-index: 5;
+        }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: relative;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .icon {
+            font-size: 3rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            transition: color 0.3s, transform 0.3s;
+        }
+
+        .shredder-widget.drag-active .icon {
+            color: var(--rose);
+            transform: scale(1.1);
+        }
+
+        .main-text {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .sub-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        /* File Input Fallback */
+        .file-input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 20;
+        }
+
+        /* Active Shredding State */
+        .shredder-widget.shredding {
+            border-style: solid;
+            border-color: var(--rose);
+            background: rgba(0,0,0,0.9);
+        }
+
+        .shredder-widget.shredding .icon {
+            color: var(--rose);
+            animation: vibrate 0.1s infinite;
+        }
+
+        .shredder-widget.shredding .main-text {
+            color: var(--rose);
+            text-shadow: 0 0 10px var(--rose-glow);
+        }
+
+        /* Success/Purged State */
+        .shredder-widget.purged {
+            border-style: solid;
+            border-color: var(--gold);
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .shredder-widget.purged .icon {
+            color: var(--gold);
+        }
+
+        .shredder-widget.purged .main-text {
+            color: var(--gold);
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+        }
+
+        @keyframes vibrate {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-2px, 2px); }
+            50% { transform: translate(2px, -2px); }
+            75% { transform: translate(-2px, -2px); }
+            100% { transform: translate(2px, 2px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="shredder-widget" id="shredder">
+        <input type="file" class="file-input" id="file-input" multiple>
+        
+        <canvas id="incinerator-canvas"></canvas>
+        
+        <div class="ui-layer">
+            <div class="icon" id="shred-icon">☠</div>
+            <div class="main-text" id="shred-main-text">SECURE DATA PURGE</div>
+            <div class="sub-text" id="shred-sub-text">Drag files here for cryptographic destruction</div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const shredder = document.getElementById('shredder');
+        const fileInput = document.getElementById('file-input');
+        const mainText = document.getElementById('shred-main-text');
+        const subText = document.getElementById('shred-sub-text');
+        const icon = document.getElementById('shred-icon');
+        const canvas = document.getElementById('incinerator-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Drag & Drop Handling ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            shredder.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            shredder.addEventListener(eventName, () => {
+                if (!shredder.classList.contains('shredding')) {
+                    shredder.classList.add('drag-active');
+                    mainText.textContent = "RELEASE TO INCINERATE";
+                }
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            shredder.addEventListener(eventName, () => {
+                shredder.classList.remove('drag-active');
+                if (!shredder.classList.contains('shredding') && !shredder.classList.contains('purged')) {
+                    mainText.textContent = "SECURE DATA PURGE";
+                }
+            }, false);
+        });
+
+        shredder.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
+        fileInput.addEventListener('change', function() { handleFiles(this.files); });
+
+        // --- Canvas Particle Engine ---
+        let particles = [];
+        let isAnimating = false;
+        const hexChars = '0123456789ABCDEF';
+
+        function resizeCanvas() {
+            canvas.width = shredder.clientWidth;
+            canvas.height = shredder.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class HexParticle {
+            constructor() {
+                this.x = (Math.random() * canvas.width * 0.6) + (canvas.width * 0.2); // Spawn mostly in center
+                this.y = (canvas.height / 2) + (Math.random() * 20 - 10);
+                this.vx = (Math.random() - 0.5) * 4; // Spread outward
+                this.vy = Math.random() * 5 + 2;     // Fall downward
+                this.char = hexChars[Math.floor(Math.random() * hexChars.length)];
+                this.size = Math.random() * 10 + 10;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.03 + 0.015;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                // Change char randomly for a "glitching" effect
+                if (Math.random() > 0.8) {
+                    this.char = hexChars[Math.floor(Math.random() * hexChars.length)];
+                }
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = `rgba(255, 51, 51, ${this.life})`; // Bright rose/red
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = `rgba(139, 0, 0, ${this.life})`;
+                ctx.font = `${this.size}px monospace`;
+                ctx.fillText(this.char, this.x, this.y);
+                ctx.shadowBlur = 0; // Reset
+            }
+        }
+
+        function animateParticles() {
+            if (!isAnimating && particles.length === 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+
+            // Dark fading trail effect
+            ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Spawn new particles while actively shredding
+            if (shredder.classList.contains('shredding')) {
+                for (let i = 0; i < 5; i++) {
+                    particles.push(new HexParticle());
+                }
+            }
+
+            // Update and draw
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw(ctx);
+
+                if (p.life <= 0 || p.y > canvas.height) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animateParticles);
+        }
+
+        // --- Main Logic ---
+        function handleFiles(files) {
+            if (files.length === 0 || shredder.classList.contains('shredding')) return;
+            
+            const file = files[0];
+            
+            // Phase 1: Lock UI and Start Shredding
+            shredder.classList.add('shredding');
+            shredder.classList.remove('purged');
+            fileInput.disabled = true;
+            
+            icon.textContent = "♨";
+            mainText.textContent = "INCINERATING PAYLOAD...";
+            subText.textContent = `TARGET: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+            
+            // Start Canvas Engine
+            isAnimating = true;
+            particles = [];
+            animateParticles();
+
+            // Phase 2: Completion
+            setTimeout(() => {
+                shredder.classList.remove('shredding');
+                shredder.classList.add('purged');
+                
+                icon.textContent = "✓";
+                mainText.textContent = "PAYLOAD PURGED";
+                subText.textContent = "Data successfully destroyed from memory.";
+                
+                // Let particles fade out naturally
+                setTimeout(() => {
+                    isAnimating = false;
+                }, 2000);
+
+                // Phase 3: Reset
+                setTimeout(() => {
+                    shredder.classList.remove('purged');
+                    icon.textContent = "☠";
+                    mainText.textContent = "SECURE DATA PURGE";
+                    subText.textContent = "Drag files here for cryptographic destruction";
+                    fileInput.disabled = false;
+                }, 4000);
+
+            }, 2500); // 2.5 second shred duration
+        }
+    </script>
+</body>
+</html>
