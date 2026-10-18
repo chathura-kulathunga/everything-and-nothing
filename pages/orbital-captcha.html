@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-Trust // Orbital Captcha</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: #0a0a0a;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+            --success: #d4af37; /* Using old-money gold for success */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .captcha-module {
+            width: 100%;
+            max-width: 380px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            padding: 30px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9), inset 0 0 15px rgba(212, 175, 55, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .module-header {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* --- The Orbital Rings --- */
+        .vault-container {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Targeting Reticle (12 o'clock indicator) */
+        .reticle {
+            position: absolute;
+            top: -10px;
+            width: 4px;
+            height: 20px;
+            background: var(--rose);
+            box-shadow: 0 0 10px var(--rose-glow);
+            z-index: 10;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .ring {
+            position: absolute;
+            border-radius: 50%;
+            /* Creating the broken ring effect */
+            border: 4px solid var(--gold-dim);
+            border-top-color: transparent; 
+            transition: transform 0.1s linear;
+        }
+
+        .ring.outer { width: 160px; height: 160px; border-width: 3px; }
+        .ring.middle { width: 120px; height: 120px; border-width: 5px; }
+        .ring.inner { width: 80px; height: 80px; border-width: 4px; }
+
+        .vault-core {
+            width: 40px;
+            height: 40px;
+            background: #111;
+            border: 2px solid var(--rose);
+            border-radius: 50%;
+            box-shadow: inset 0 0 10px var(--rose-glow);
+            transition: all 0.4s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: var(--rose);
+        }
+
+        /* --- Custom Range Slider --- */
+        .slider-container {
+            width: 100%;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            position: relative;
+            z-index: 5;
+        }
+
+        input[type=range]:focus { outline: none; }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: var(--text-muted);
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 0;
+            background: var(--rose);
+            cursor: ew-resize;
+            -webkit-appearance: none;
+            margin-top: -8px;
+            box-shadow: 0 0 10px var(--rose-glow);
+            transform: rotate(45deg); /* Diamond shape */
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+
+        /* --- Output Feed --- */
+        .status-feed {
+            font-size: 0.8rem;
+            color: var(--rose);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            min-height: 20px;
+            transition: color 0.3s;
+        }
+
+        /* --- Success/Unlocked State --- */
+        .captcha-module.unlocked .reticle {
+            background: var(--gold);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+        }
+
+        .captcha-module.unlocked .ring {
+            border-color: var(--gold);
+            border-top-color: transparent;
+            filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.4));
+        }
+
+        .captcha-module.unlocked .vault-core {
+            border-color: var(--gold);
+            color: var(--gold);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4), inset 0 0 10px rgba(212, 175, 55, 0.2);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .captcha-module.unlocked input[type=range]::-webkit-slider-thumb {
+            background: var(--gold);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
+            pointer-events: none; /* Lock the slider */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="captcha-module" id="captcha">
+        <div class="module-header">Prove Authorization</div>
+        
+        <div class="vault-container">
+            <div class="reticle"></div>
+            <div class="ring outer" id="ring-outer"></div>
+            <div class="ring middle" id="ring-middle"></div>
+            <div class="ring inner" id="ring-inner"></div>
+            <div class="vault-core" id="core-icon">🔒</div>
+        </div>
+
+        <div class="slider-container">
+            <input type="range" min="0" max="100" value="0" id="decrypt-slider">
+        </div>
+
+        <div class="status-feed" id="status-feed">ALIGN ORBITAL GAPS</div>
+    </div>
+
+    <script>
+        const slider = document.getElementById('decrypt-slider');
+        const ringOuter = document.getElementById('ring-outer');
+        const ringMiddle = document.getElementById('ring-middle');
+        const ringInner = document.getElementById('ring-inner');
+        const statusFeed = document.getElementById('status-feed');
+        const captchaModule = document.getElementById('captcha');
+        const coreIcon = document.getElementById('core-icon');
+
+        // The exact slider value required to unlock
+        const TARGET_VAL = 68;
+        let isUnlocked = false;
+
+        // Gear Ratios (how fast and which direction each ring spins relative to the slider)
+        // By multiplying the distance from the target, we ensure they all hit exactly 0 degrees at the target value.
+        const GEAR_OUTER = 6.5;   // Spins fast clockwise
+        const GEAR_MIDDLE = -4.2; // Spins medium counter-clockwise
+        const GEAR_INNER = 8.1;   // Spins very fast clockwise
+
+        function updateRings() {
+            if (isUnlocked) return;
+
+            const val = parseFloat(slider.value);
+            
+            // Calculate rotation. 
+            // When val == TARGET_VAL, the equation (val - TARGET_VAL) equals 0, 
+            // meaning all rings align perfectly at the top (0 degrees).
+            const rotOuter = (val - TARGET_VAL) * GEAR_OUTER;
+            const rotMiddle = (val - TARGET_VAL) * GEAR_MIDDLE;
+            const rotInner = (val - TARGET_VAL) * GEAR_INNER;
+
+            ringOuter.style.transform = `rotate(${rotOuter}deg)`;
+            ringMiddle.style.transform = `rotate(${rotMiddle}deg)`;
+            ringInner.style.transform = `rotate(${rotInner}deg)`;
+
+            // Visual feedback based on proximity to the target
+            const distance = Math.abs(val - TARGET_VAL);
+            
+            if (distance === 0) {
+                unlockVault();
+            } else if (distance < 5) {
+                statusFeed.textContent = "CRITICAL ALIGNMENT DETECTED...";
+                statusFeed.style.color = "var(--gold)";
+            } else if (distance < 15) {
+                statusFeed.textContent = "SYNCHRONIZING...";
+                statusFeed.style.color = "var(--rose)";
+            } else {
+                statusFeed.textContent = "ALIGN ORBITAL GAPS";
+                statusFeed.style.color = "var(--rose)";
+            }
+        }
+
+        function unlockVault() {
+            isUnlocked = true;
+            slider.disabled = true; // Lock the slider
+            
+            captchaModule.classList.add('unlocked');
+            coreIcon.textContent = "✓";
+            statusFeed.textContent = "PAYLOAD DECRYPTED";
+            statusFeed.style.color = "var(--gold)";
+
+            // Haptic feedback for mobile
+            if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+
+            // Dispatch an event so the parent form knows it's safe to submit
+            console.log("[SYSTEM] Captcha bypassed. Proceeding to next node.");
+        }
+
+        // Listen for slider movement
+        slider.addEventListener('input', updateRings);
+
+        // Initialize positions on load
+        updateRings();
+    </script>
+</body>
+</html>
