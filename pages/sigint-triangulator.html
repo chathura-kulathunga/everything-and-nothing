@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGINT // Node Triangulator</title>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --surface: #0a0a0a;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+            --terminal: #00ff41;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        .radar-deck {
+            width: 100%;
+            max-width: 700px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(212, 175, 55, 0.05);
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+        }
+
+        /* --- Canvas Area --- */
+        .radar-container {
+            width: 400px;
+            height: 400px;
+            position: relative;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(212, 175, 55, 0.05) 0px,
+                rgba(212, 175, 55, 0.05) 1px,
+                transparent 1px,
+                transparent 40px
+            ),
+            repeating-linear-gradient(
+                90deg,
+                rgba(212, 175, 55, 0.05) 0px,
+                rgba(212, 175, 55, 0.05) 1px,
+                transparent 1px,
+                transparent 40px
+            );
+            border-right: 1px solid var(--gold-dim);
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- Target Info Panel --- */
+        .info-panel {
+            width: 300px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0,0,0,0.4);
+        }
+
+        .panel-header {
+            color: var(--gold);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--gold-dim);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--rose);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--rose-glow);
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .data-readout {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .data-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .data-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .data-value {
+            font-size: 1rem;
+            color: var(--text-main);
+            letter-spacing: 1px;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 10px;
+            border: 1px solid #222;
+            transition: all 0.3s;
+        }
+
+        .data-value.active-lock {
+            border-color: var(--rose);
+            color: var(--rose);
+            text-shadow: 0 0 8px var(--rose-glow);
+            background: rgba(139, 0, 0, 0.1);
+        }
+
+        .action-btn {
+            margin-top: auto;
+            background: transparent;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 12px;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .action-btn:hover {
+            background: var(--gold);
+            color: var(--bg-base);
+        }
+
+        .action-btn:disabled {
+            border-color: var(--text-muted);
+            color: var(--text-muted);
+            background: transparent;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="radar-deck">
+        <div class="radar-container" id="radar-container">
+            <canvas id="radar-canvas"></canvas>
+        </div>
+        
+        <div class="info-panel">
+            <div class="panel-header">
+                <div class="live-dot"></div>
+                SIGINT // AUDITOR
+            </div>
+            
+            <div class="data-readout">
+                <div class="data-group">
+                    <span class="data-label">Target MAC Address</span>
+                    <span class="data-value" id="val-mac">--:--:--:--:--:--</span>
+                </div>
+                <div class="data-group">
+                    <span class="data-label">Protocol</span>
+                    <span class="data-value" id="val-proto">UNKNOWN</span>
+                </div>
+                <div class="data-group">
+                    <span class="data-label">Signal Strength (RSSI)</span>
+                    <span class="data-value" id="val-rssi">-- dBm</span>
+                </div>
+            </div>
+
+            <button class="action-btn" id="btn-intercept" disabled>Intercept Payload</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('radar-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('radar-container');
+        
+        // UI Elements
+        const valMac = document.getElementById('val-mac');
+        const valProto = document.getElementById('val-proto');
+        const valRssi = document.getElementById('val-rssi');
+        const btnIntercept = document.getElementById('btn-intercept');
+
+        let width, height, cx, cy;
+        let angle = 0;
+        let nodes = [];
+        let lockedNode = null;
+
+        // --- Setup ---
+        function initCanvas() {
+            width = canvas.width = container.clientWidth;
+            height = canvas.height = container.clientHeight;
+            cx = width / 2;
+            cy = height / 2;
+        }
+
+        // --- Mock Data Generators ---
+        const randomHex = () => Math.random().toString(16).substr(2, 2).toUpperCase().padStart(2, '0');
+        const generateMAC = () => Array.from({length: 6}, randomHex).join(':');
+        const getProtocol = () => Math.random() > 0.4 ? '802.11 (Wi-Fi)' : 'BLE (Beacon)';
+        const getRSSI = () => Math.floor(Math.random() * -60) - 30; // -30 to -90
+
+        // Populate mock wireless nodes
+        for(let i=0; i<8; i++) {
+            nodes.push({
+                x: (Math.random() * (width - 60)) + 30,
+                y: (Math.random() * (height - 60)) + 30,
+                mac: generateMAC(),
+                protocol: getProtocol(),
+                rssi: getRSSI(),
+                opacity: 0,
+                isThreat: Math.random() > 0.7 // Some nodes are marked as high-interest threats
+            });
+        }
+
+        // --- Animation Loop ---
+        function drawRadar() {
+            // Fade effect for the sweeping tail
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw concentric distance rings
+            ctx.strokeStyle = 'rgba(212, 175, 55, 0.15)'; // Gold-dim
+            ctx.lineWidth = 1;
+            for(let r = 50; r <= 200; r += 50) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Draw Sweep Line
+            const x2 = cx + Math.cos(angle) * (width * 0.8);
+            const y2 = cy + Math.sin(angle) * (height * 0.8);
+            
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = 'var(--rose)';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'var(--rose-glow)';
+            ctx.stroke();
+            ctx.shadowBlur = 0; // reset
+
+            // Process Nodes
+            nodes.forEach(node => {
+                // Calculate angle from center to node
+                const dx = node.x - cx;
+                const dy = node.y - cy;
+                let nodeAngle = Math.atan2(dy, dx);
+                if (nodeAngle < 0) nodeAngle += Math.PI * 2;
+
+                // Normalize sweep angle
+                let sweepAngle = angle % (Math.PI * 2);
+                
+                // Light up node when the sweep line passes it
+                const angleDiff = Math.abs(sweepAngle - nodeAngle);
+                if (angleDiff < 0.1 || angleDiff > (Math.PI * 2 - 0.1)) {
+                    node.opacity = 1.0;
+                }
+
+                // Fade out over time
+                if (node.opacity > 0) {
+                    node.opacity -= 0.015;
+                }
+
+                // Draw Node
+                if (node.opacity > 0 || lockedNode === node) {
+                    const isLocked = lockedNode === node;
+                    
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, isLocked ? 6 : 4, 0, Math.PI * 2);
+                    
+                    if (isLocked) {
+                        ctx.fillStyle = 'var(--rose)';
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = 'var(--rose-glow)';
+                        
+                        // Draw targeting crosshair
+                        ctx.strokeStyle = 'var(--rose)';
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(node.x - 12, node.y); ctx.lineTo(node.x + 12, node.y);
+                        ctx.moveTo(node.x, node.y - 12); ctx.lineTo(node.x, node.y + 12);
+                        ctx.stroke();
+                    } else {
+                        // Threat nodes are gold, normal nodes are muted
+                        ctx.fillStyle = node.isThreat 
+                            ? `rgba(212, 175, 55, ${node.opacity})` 
+                            : `rgba(234, 234, 234, ${node.opacity})`;
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.fill();
+                }
+            });
+
+            angle += 0.03; // Speed of rotation
+            requestAnimationFrame(drawRadar);
+        }
+
+        // --- Interaction ---
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            lockedNode = null;
+            let found = false;
+
+            // Check if user clicked near a node
+            nodes.forEach(node => {
+                const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
+                if (dist < 15) { // 15px hit radius
+                    lockedNode = node;
+                    found = true;
+                    
+                    // Update UI Panel
+                    valMac.textContent = node.mac;
+                    valProto.textContent = node.protocol;
+                    valRssi.textContent = `${node.rssi} dBm`;
+                    
+                    // Trigger visual lock styles
+                    [valMac, valProto, valRssi].forEach(el => el.classList.add('active-lock'));
+                    btnIntercept.disabled = false;
+                }
+            });
+
+            if (!found) {
+                // Clear UI if clicked on empty space
+                valMac.textContent = '--:--:--:--:--:--';
+                valProto.textContent = 'UNKNOWN';
+                valRssi.textContent = '-- dBm';
+                [valMac, valProto, valRssi].forEach(el => el.classList.remove('active-lock'));
+                btnIntercept.disabled = true;
+            }
+        });
+
+        btnIntercept.addEventListener('click', () => {
+            if (lockedNode) {
+                alert(`Initializing Handshake Intercept on ${lockedNode.mac}...`);
+            }
+        });
+
+        // Start
+        initCanvas();
+        window.addEventListener('resize', initCanvas);
+        drawRadar();
+    </script>
+</body>
+</html>
