@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A.E.G.I.S // Command Matrix</title>
+    <style>
+        :root {
+            --bg-base: #030303;
+            --surface: #0a0a0a;
+            --surface-hover: #111;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --terminal-green: #00ff41;
+            --text-main: #eaeaea;
+            --text-muted: #555;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 70px 1fr;
+            grid-template-rows: 60px 1fr 250px;
+            grid-template-areas: 
+                "sidebar header"
+                "sidebar workspace"
+                "sidebar terminal";
+        }
+
+        /* --- Global Scrollbar --- */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+        /* --- Header --- */
+        .header {
+            grid-area: header;
+            background: var(--surface);
+            border-bottom: 1px solid var(--gold-dim);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 25px;
+            z-index: 10;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .sys-title {
+            color: var(--gold);
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .sys-clock {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+
+        /* --- Sidebar Navigation --- */
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--surface);
+            border-right: 1px solid var(--gold-dim);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            gap: 20px;
+            z-index: 20;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
+
+        .nav-item {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+            background: rgba(212, 175, 55, 0.05);
+            box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.1);
+        }
+
+        /* --- Main Workspace (Grid for Widgets) --- */
+        .workspace {
+            grid-area: workspace;
+            padding: 20px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-auto-rows: minmax(200px, auto);
+            gap: 20px;
+            background-image: 
+                radial-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        /* Placeholder cards for your existing widgets */
+        .widget-slot {
+            background: rgba(10, 10, 10, 0.7);
+            border: 1px dashed var(--gold-dim);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+        }
+
+        .widget-slot:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        /* --- Integrated Terminal --- */
+        .terminal {
+            grid-area: terminal;
+            background: #020202;
+            border-top: 1px solid var(--rose);
+            box-shadow: 0 -5px 20px var(--rose-glow);
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .terminal-header {
+            color: var(--rose);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            text-transform: uppercase;
+        }
+
+        .terminal-output {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .log-line {
+            font-size: 0.85rem;
+            color: var(--text-main);
+            word-break: break-all;
+        }
+
+        .log-line.sys { color: var(--text-muted); }
+        .log-line.ok { color: var(--terminal-green); }
+        .log-line.warn { color: var(--gold); }
+        .log-line.err { color: var(--rose); }
+
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .prompt {
+            color: var(--gold);
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .cmd-input {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            outline: none;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        /* Scanline Overlay for Terminal */
+        .terminal::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px
+            );
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="sys-title">A.E.G.I.S // Command Node</div>
+        <div class="sys-clock" id="live-clock">00:00:00 UTC</div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="nav-item active" title="Dashboard">⊞</div>
+        <div class="nav-item" title="Network Triangulator">⌖</div>
+        <div class="nav-item" title="Data Shredder">☠</div>
+        <div class="nav-item" title="Telemetry Monitor">∿</div>
+        <div class="nav-item" style="margin-top: auto; margin-bottom: 20px;" title="Settings">⚙</div>
+    </nav>
+
+    <!-- Workspace Grid -->
+    <main class="workspace">
+        <div class="widget-slot" style="grid-column: span 2; grid-row: span 2;">
+            [ Drop Dynamic PIN Pad Here ]
+        </div>
+        <div class="widget-slot">
+            [ Drop Telemetry Monitor Here ]
+        </div>
+        <div class="widget-slot">
+            [ Drop Ephemeral Vault Here ]
+        </div>
+        <div class="widget-slot">
+            [ Drop Recon Scanner Here ]
+        </div>
+        <div class="widget-slot" style="grid-column: span 2;">
+            [ Drop Packet Sniffer Here ]
+        </div>
+    </main>
+
+    <!-- Interactive Terminal -->
+    <section class="terminal" onclick="document.getElementById('cmd-input').focus()">
+        <div class="terminal-header">
+            <span>root@aegis-core:~#</span>
+            <span>tty1</span>
+        </div>
+        
+        <div class="terminal-output" id="term-out">
+            <!-- Logs injected via JS -->
+        </div>
+        
+        <div class="terminal-input-line">
+            <span class="prompt">root@aegis ❯</span>
+            <input type="text" class="cmd-input" id="cmd-input" autocomplete="off" spellcheck="false" autofocus>
+        </div>
+    </section>
+
+    <script>
+        // --- Live Clock ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('live-clock').textContent = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- Terminal Engine ---
+        const cmdInput = document.getElementById('cmd-input');
+        const termOut = document.getElementById('term-out');
+
+        function printLog(msg, type = 'sys') {
+            const div = document.createElement('div');
+            div.className = `log-line ${type}`;
+            div.textContent = msg;
+            termOut.appendChild(div);
+            termOut.scrollTop = termOut.scrollHeight;
+        }
+
+        // Boot Sequence Simulation
+        const bootSequence = [
+            { msg: "Loading kernel modules...", type: "sys", delay: 100 },
+            { msg: "[OK] Core architecture mounted.", type: "ok", delay: 400 },
+            { msg: "Scanning peripheral buses...", type: "sys", delay: 700 },
+            { msg: "[OK] /dev/ttyUSB0 (ESP32_NODE_LINK) established at 115200 baud.", type: "ok", delay: 1100 },
+            { msg: "[WARN] Firewall operating in permissive mode.", type: "warn", delay: 1400 },
+            { msg: "A.E.G.I.S CLI v2.4.1 ready. Type 'help' for commands.", type: "ok", delay: 1800 }
+        ];
+
+        bootSequence.forEach(step => {
+            setTimeout(() => printLog(step.msg, step.type), step.delay);
+        });
+
+        // Command Parser
+        cmdInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const rawCmd = this.value.trim();
+                if (rawCmd === '') return;
+                
+                // Echo the command
+                printLog(`root@aegis ❯ ${rawCmd}`, 'sys');
+                this.value = '';
+
+                // Parse logic
+                const cmd = rawCmd.toLowerCase();
+                
+                switch(cmd) {
+                    case 'help':
+                        printLog("Available commands:", 'ok');
+                        printLog("  clear    - Clear terminal output");
+                        printLog("  status   - Display node matrix status");
+                        printLog("  scan     - Initiate local subnet sweep");
+                        printLog("  connect  - Bridge serial telemetry");
+                        break;
+                    case 'clear':
+                        termOut.innerHTML = '';
+                        break;
+                    case 'status':
+                        printLog("SYSTEM: Online | MEM: 42% | UPLINK: SECURE", 'ok');
+                        break;
+                    case 'scan':
+                        printLog("Initializing SYN scan on 192.168.1.0/24...", 'warn');
+                        setTimeout(() => printLog("[!] Rogue AP detected on Channel 6.", 'err'), 1200);
+                        break;
+                    case 'connect':
+                        printLog("Bridging UART connection...", 'sys');
+                        setTimeout(() => printLog("[OK] Telemetry stream active.", 'ok'), 800);
+                        break;
+                    default:
+                        printLog(`Command not found: ${rawCmd}`, 'err');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
