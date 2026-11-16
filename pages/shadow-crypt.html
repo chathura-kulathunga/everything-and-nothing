@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow-Crypt // E2E Comms</title>
+    <style>
+        :root {
+            --bg-base: #030303;
+            --surface: #0a0a0a;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+            --text-muted: #444;
+            --cipher-text: #666;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .comm-module {
+            width: 100%;
+            max-width: 450px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9), inset 0 0 15px rgba(212, 175, 55, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        .module-header {
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid var(--gold-dim);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            color: var(--gold);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--rose);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--rose-glow);
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .header-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* --- Message Feed --- */
+        .feed-container {
+            height: 300px;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(212, 175, 55, 0.02) 0px,
+                rgba(212, 175, 55, 0.02) 1px,
+                transparent 1px,
+                transparent 24px
+            );
+        }
+
+        .feed-container::-webkit-scrollbar { width: 4px; }
+        .feed-container::-webkit-scrollbar-thumb { background: var(--gold-dim); }
+
+        .message-block {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .msg-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .msg-sender { color: var(--rose); }
+        .msg-time { float: right; }
+
+        .msg-content {
+            font-size: 0.85rem;
+            color: var(--cipher-text);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-left: 2px solid var(--text-muted);
+            word-break: break-all;
+            letter-spacing: 1px;
+            line-height: 1.4;
+            transition: all 0.3s ease;
+        }
+
+        /* State when actively decrypted */
+        .module-active .msg-content {
+            color: var(--text-main);
+            border-left-color: var(--gold);
+            background: rgba(212, 175, 55, 0.05);
+            word-break: normal;
+        }
+        
+        .module-active .msg-sender { color: var(--gold); }
+        .module-active .status-dot { background-color: var(--gold); box-shadow: 0 0 10px rgba(212, 175, 55, 0.6); animation: none; }
+
+        /* --- Interaction Footer --- */
+        .footer-action {
+            padding: 15px;
+            border-top: 1px solid var(--gold-dim);
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn-decrypt {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--rose);
+            color: var(--rose);
+            padding: 12px;
+            font-size: 0.85rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: inset 0 0 10px rgba(139, 0, 0, 0.1);
+        }
+
+        .btn-decrypt:active {
+            background: var(--rose);
+            color: var(--bg-base);
+            box-shadow: 0 0 20px var(--rose-glow);
+        }
+
+        /* Success state for button while held */
+        .module-active .btn-decrypt {
+            border-color: var(--gold);
+            background: var(--gold);
+            color: var(--bg-base);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="comm-module" id="module">
+        <div class="module-header">
+            <div class="header-title">
+                <div class="status-dot"></div>
+                SHADOW-CRYPT
+            </div>
+            <div class="header-meta">RSA-4096 // E2E ACTIVE</div>
+        </div>
+
+        <div class="feed-container" id="feed">
+            <!-- Messages injected here -->
+        </div>
+
+        <div class="footer-action">
+            <button class="btn-decrypt" id="btn-decrypt">Hold to Decrypt</button>
+        </div>
+    </div>
+
+    <script>
+        const feed = document.getElementById('feed');
+        const btnDecrypt = document.getElementById('btn-decrypt');
+        const moduleContainer = document.getElementById('module');
+
+        // The actual secret messages
+        const plainTextMessages = [
+            { sender: "GHOST_ACTOR", time: "19:42:01", text: "The payload was successfully injected into the main subnet." },
+            { sender: "GHOST_ACTOR", time: "19:44:12", text: "Awaiting your command to execute the sleeper script." },
+            { sender: "GHOST_ACTOR", time: "19:48:55", text: "Warning: Perimeter tripwires triggered. Burn this channel." }
+        ];
+
+        // Characters used for the encrypted visual state
+        const cipherChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+<>?';
+        
+        let isDecrypted = false;
+        let scrambleIntervals = [];
+        let messageNodes = [];
+
+        // Generate a random cipher string of a specific length
+        function generateCipher(length) {
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += cipherChars.charAt(Math.floor(Math.random() * cipherChars.length));
+            }
+            return result;
+        }
+
+        // Initialize the feed with encrypted messages
+        function renderFeed() {
+            plainTextMessages.forEach((msg, index) => {
+                const block = document.createElement('div');
+                block.className = 'message-block';
+                
+                const cipherLength = msg.text.length + 10; // Add some padding so it looks like a block of hex
+                
+                block.innerHTML = `
+                    <div class="msg-meta">
+                        <span class="msg-sender">${msg.sender}</span>
+                        <span class="msg-time">${msg.time}</span>
+                    </div>
+                    <div class="msg-content" id="msg-${index}">${generateCipher(cipherLength)}</div>
+                `;
+                
+                feed.appendChild(block);
+                messageNodes.push({
+                    node: block.querySelector('.msg-content'),
+                    plain: msg.text,
+                    cipherLength: cipherLength
+                });
+            });
+        }
+
+        // Continuous background scrambling when locked
+        function startIdleScramble() {
+            messageNodes.forEach(item => {
+                const interval = setInterval(() => {
+                    if (!isDecrypted) {
+                        item.node.textContent = generateCipher(item.cipherLength);
+                    }
+                }, 150); // Scramble every 150ms
+                scrambleIntervals.push(interval);
+            });
+        }
+
+        function stopIdleScramble() {
+            scrambleIntervals.forEach(clearInterval);
+            scrambleIntervals = [];
+        }
+
+        // --- Decryption Animation ---
+        function resolveToPlaintext() {
+            isDecrypted = true;
+            moduleContainer.classList.add('module-active');
+            stopIdleScramble();
+            btnDecrypt.textContent = "CHANNEL OPEN";
+
+            messageNodes.forEach(item => {
+                let iterations = 0;
+                const targetText = item.plain;
+                const textLength = targetText.length;
+                
+                const resolver = setInterval(() => {
+                    let currentString = "";
+                    for (let i = 0; i < textLength; i++) {
+                        if (i < iterations) {
+                            // Lock in the correct character
+                            currentString += targetText[i];
+                        } else {
+                            // Random character for the rest
+                            currentString += cipherChars.charAt(Math.floor(Math.random() * cipherChars.length));
+                        }
+                    }
+                    
+                    item.node.textContent = currentString;
+                    
+                    iterations += 2; // Speed of decryption sweep
+                    
+                    if (iterations > textLength) {
+                        clearInterval(resolver);
+                        item.node.textContent = targetText; // Ensure exact match at the end
+                    }
+                    
+                    // If user lets go mid-decryption, kill the interval
+                    if (!isDecrypted) clearInterval(resolver);
+                    
+                }, 30);
+            });
+        }
+
+        function revertToCipher() {
+            isDecrypted = false;
+            moduleContainer.classList.remove('module-active');
+            btnDecrypt.textContent = "Hold to Decrypt";
+            
+            // Instantly scramble them back
+            messageNodes.forEach(item => {
+                item.node.textContent = generateCipher(item.cipherLength);
+            });
+            
+            startIdleScramble();
+        }
+
+        // --- Event Listeners ---
+        // Mouse
+        btnDecrypt.addEventListener('mousedown', resolveToPlaintext);
+        window.addEventListener('mouseup', revertToCipher);
+        
+        // Touch (Mobile)
+        btnDecrypt.addEventListener('touchstart', (e) => { e.preventDefault(); resolveToPlaintext(); });
+        window.addEventListener('touchend', revertToCipher);
+        window.addEventListener('touchcancel', revertToCipher);
+
+        // Init
+        renderFeed();
+        startIdleScramble();
+    </script>
+</body>
+</html>

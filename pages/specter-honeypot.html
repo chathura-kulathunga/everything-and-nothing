@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Specter // Daemon Honeypot</title>
+    <style>
+        :root {
+            --bg-base: #030303;
+            --surface: rgba(10, 10, 10, 0.9);
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-bright: #ff1a1a;
+            --rose-glow: rgba(139, 0, 0, 0.7);
+            --text-main: #eaeaea;
+            --text-muted: #444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow: hidden;
+            /* Faint grid background */
+            background-image: 
+                radial-gradient(var(--gold-dim) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .containment-cell {
+            width: 100%;
+            max-width: 550px;
+            background: var(--surface);
+            border: 1px solid var(--rose);
+            border-radius: 4px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9), inset 0 0 30px rgba(139, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* --- CSS Glitch Effect --- */
+        .glitch-header {
+            font-size: 1.2rem;
+            color: var(--rose-bright);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+            text-shadow: 0 0 10px var(--rose-glow);
+        }
+
+        .glitch-header::before,
+        .glitch-header::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--surface);
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        }
+
+        .glitch-header::before {
+            left: 2px;
+            text-shadow: -2px 0 var(--gold);
+            animation: glitch-anim-1 2s infinite linear alternate-reverse;
+        }
+
+        .glitch-header::after {
+            left: -2px;
+            text-shadow: 2px 0 #000;
+            animation: glitch-anim-2 2.5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim-1 {
+            0% { clip-path: inset(20% 0 80% 0); }
+            20% { clip-path: inset(60% 0 10% 0); }
+            40% { clip-path: inset(40% 0 50% 0); }
+            60% { clip-path: inset(80% 0 5% 0); }
+            80% { clip-path: inset(10% 0 70% 0); }
+            100% { clip-path: inset(30% 0 20% 0); }
+        }
+
+        @keyframes glitch-anim-2 {
+            0% { clip-path: inset(10% 0 60% 0); }
+            20% { clip-path: inset(30% 0 20% 0); }
+            40% { clip-path: inset(70% 0 10% 0); }
+            60% { clip-path: inset(20% 0 50% 0); }
+            80% { clip-path: inset(90% 0 5% 0); }
+            100% { clip-path: inset(5% 0 80% 0); }
+        }
+
+        /* --- Terminal Feed --- */
+        .terminal-box {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px dashed var(--rose);
+            height: 220px;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 25px;
+        }
+
+        .terminal-box::-webkit-scrollbar { width: 4px; }
+        .terminal-box::-webkit-scrollbar-thumb { background: var(--rose); }
+
+        .log-line {
+            font-size: 0.8rem;
+            word-wrap: break-word;
+        }
+
+        .log-sys { color: var(--gold); }
+        .log-warn { color: var(--rose); text-shadow: 0 0 5px var(--rose-glow); }
+        
+        .log-corrupted { 
+            color: var(--rose-bright); 
+            font-weight: bold; 
+            letter-spacing: 2px;
+            animation: shake 0.2s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-1px); }
+            75% { transform: translateX(1px); }
+        }
+
+        /* --- Action Button --- */
+        .btn-contain {
+            background: transparent;
+            border: 2px solid var(--rose);
+            color: var(--rose);
+            padding: 15px;
+            font-size: 1rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px var(--rose-glow);
+            animation: heartbeat 1.5s infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px var(--rose-glow); }
+            15% { transform: scale(1.02); box-shadow: 0 0 25px var(--rose-glow); }
+            30% { transform: scale(1); box-shadow: 0 0 15px var(--rose-glow); }
+        }
+
+        .btn-contain:hover {
+            background: var(--rose);
+            color: var(--bg-base);
+            /* Button fights back when hovered */
+            transform: translate(2px, -2px);
+            box-shadow: -2px 2px 0 var(--gold); 
+        }
+
+        .btn-contain.sealed {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(212, 175, 55, 0.1);
+            box-shadow: 0 0 20px var(--gold-dim);
+            animation: none;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="containment-cell">
+        <div class="glitch-header" data-text="CRITICAL // ANOMALY DETECTED">
+            CRITICAL // ANOMALY DETECTED
+        </div>
+        
+        <div class="terminal-box" id="term-box">
+            <!-- Logs spawn here -->
+        </div>
+
+        <button class="btn-contain" id="btn-contain">Initiate Containment</button>
+    </div>
+
+    <script>
+        const termBox = document.getElementById('term-box');
+        const btnContain = document.getElementById('btn-contain');
+        const glitchHeader = document.querySelector('.glitch-header');
+
+        let isContained = false;
+
+        const bootSequence = [
+            { text: "> Monitoring incoming packets...", type: "log-sys", delay: 500 },
+            { text: "> Standard traffic detected.", type: "log-sys", delay: 1200 },
+            { text: "> [!] Unsigned payload caught in honeypot.", type: "log-sys", delay: 2000 },
+            { text: "> Analyzing cryptographic signature...", type: "log-sys", delay: 2800 },
+            { text: "> Signature unknown. Reversing hex...", type: "log-sys", delay: 3500 },
+            // The breach starts
+            { text: "ERR_MEM_LEAK at 0xFA99B2", type: "log-warn", delay: 4500 },
+            { text: "DAEMON PROCESS SPAWNED.", type: "log-warn", delay: 5000 },
+            { text: "OVERRIDE ACCEPTED.", type: "log-corrupted", delay: 5800 },
+            { text: "I S E E Y O U . e x e", type: "log-corrupted", delay: 6500 },
+            { text: "01001000 01100101 01101100 01101100 01101111", type: "log-warn", delay: 7000 }
+        ];
+
+        function printLog(text, type) {
+            if(isContained) return; // Stop printing if sealed
+            const line = document.createElement('div');
+            line.className = `log-line ${type}`;
+            termBox.appendChild(line);
+            
+            // Typewriter effect
+            let i = 0;
+            const writer = setInterval(() => {
+                line.textContent += text.charAt(i);
+                i++;
+                termBox.scrollTop = termBox.scrollHeight;
+                if(i >= text.length) clearInterval(writer);
+            }, type === 'log-corrupted' ? 50 : 15); // Corrupted text types slower for dramatic effect
+        }
+
+        // Run the sequence
+        bootSequence.forEach(item => {
+            setTimeout(() => printLog(item.text, item.type), item.delay);
+        });
+
+        // Continuous random hex garbage if not contained
+        const garbageLoop = setInterval(() => {
+            if(isContained) {
+                clearInterval(garbageLoop);
+                return;
+            }
+            if(Math.random() > 0.6) {
+                const hex = Math.random().toString(16).substr(2, 16).toUpperCase();
+                printLog(`> ${hex} [SEGFAULT]`, 'log-warn');
+            }
+        }, 800);
+
+        // Containment Action
+        btnContain.addEventListener('click', () => {
+            isContained = true;
+            
+            // Freeze animations
+            btnContain.classList.add('sealed');
+            btnContain.textContent = "THREAT CONTAINED";
+            
+            glitchHeader.style.animation = "none";
+            glitchHeader.style.textShadow = "0 0 10px var(--gold)";
+            glitchHeader.style.color = "var(--gold)";
+            glitchHeader.textContent = "HONEYPOT // SECURE";
+            
+            // Wipe the terminal and show success
+            termBox.innerHTML = '';
+            setTimeout(() => {
+                const finalLine = document.createElement('div');
+                finalLine.className = 'log-line log-sys';
+                finalLine.style.color = "var(--gold)";
+                finalLine.textContent = "[✓] Daemon process terminated. Sector locked.";
+                termBox.appendChild(finalLine);
+            }, 500);
+        });
+    </script>
+</body>
+</html>
