@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural-Net // Topology Matrix</title>
+    <style>
+        :root {
+            --bg-base: #030303;
+            --surface: rgba(10, 10, 10, 0.9);
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.2);
+            --rose: #8b0000;
+            --rose-bright: #ff3333;
+            --rose-glow: rgba(139, 0, 0, 0.6);
+            --text-main: #eaeaea;
+            --text-muted: #555;
+            --terminal-green: #00ff41;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow: hidden;
+            background-image: radial-gradient(circle at 50% 50%, #0a0a0a 0%, var(--bg-base) 100%);
+        }
+
+        .topology-widget {
+            width: 100%;
+            max-width: 900px;
+            height: 550px;
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            border-radius: 6px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(212, 175, 55, 0.05);
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* --- Canvas Area --- */
+        .canvas-container {
+            flex-grow: 1;
+            position: relative;
+            cursor: grab;
+            background: repeating-linear-gradient(
+                0deg, rgba(212, 175, 55, 0.03) 0px, rgba(212, 175, 55, 0.03) 1px, transparent 1px, transparent 30px
+            ),
+            repeating-linear-gradient(
+                90deg, rgba(212, 175, 55, 0.03) 0px, rgba(212, 175, 55, 0.03) 1px, transparent 1px, transparent 30px
+            );
+        }
+
+        .canvas-container:active {
+            cursor: grabbing;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- Side Panel for Node Data --- */
+        .node-inspector {
+            width: 280px;
+            background: rgba(0, 0, 0, 0.6);
+            border-left: 1px solid var(--gold-dim);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .inspector-header {
+            color: var(--gold);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--gold-dim);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            box-shadow: 0 0 10px rgba(255,255,255,0.1);
+        }
+
+        .status-dot.secure {
+            background: var(--gold);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
+        }
+
+        .status-dot.breach {
+            background: var(--rose-bright);
+            box-shadow: 0 0 10px var(--rose-glow);
+            animation: blink 0.5s infinite alternate;
+        }
+
+        @keyframes blink {
+            from { opacity: 0.4; }
+            to { opacity: 1; }
+        }
+
+        .data-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .data-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .data-value {
+            font-size: 0.95rem;
+            color: var(--text-main);
+            background: rgba(10, 10, 10, 0.8);
+            padding: 8px 10px;
+            border: 1px solid #222;
+            word-break: break-all;
+        }
+
+        .data-value.alert {
+            color: var(--rose-bright);
+            border-color: var(--rose);
+            background: rgba(139, 0, 0, 0.1);
+        }
+
+        .placeholder-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 40px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="topology-widget">
+        <div class="canvas-container" id="canvas-wrapper">
+            <canvas id="net-canvas"></canvas>
+        </div>
+
+        <div class="node-inspector">
+            <div class="inspector-header">
+                <div class="status-dot" id="insp-dot"></div>
+                NODE INSPECTOR
+            </div>
+            
+            <div id="insp-content">
+                <div class="placeholder-text">HOVER OVER A NODE<br>TO EXTRACT TELEMETRY</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('net-canvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvas-wrapper');
+        
+        // Inspector UI elements
+        const inspDot = document.getElementById('insp-dot');
+        const inspContent = document.getElementById('insp-content');
+
+        let width, height;
+        
+        // --- Network Architecture Data ---
+        const nodes = [
+            { id: 'C2-CORE', type: 'core', ip: '10.0.0.1', mac: '00:1A:2B:3C:4D:5E', lat: '1ms', status: 'secure', x: 0, y: 0, radius: 25 },
+            { id: 'RT-ALPHA', type: 'router', ip: '10.0.1.1', mac: 'AA:BB:CC:DD:EE:11', lat: '4ms', status: 'secure', x: 0, y: 0, radius: 18 },
+            { id: 'RT-BETA', type: 'router', ip: '10.0.2.1', mac: 'AA:BB:CC:DD:EE:22', lat: '5ms', status: 'secure', x: 0, y: 0, radius: 18 },
+            { id: 'EP-01', type: 'endpoint', ip: '10.0.1.104', mac: 'F1:E2:D3:C4:B5:A6', lat: '12ms', status: 'secure', x: 0, y: 0, radius: 12 },
+            { id: 'EP-02', type: 'endpoint', ip: '10.0.1.105', mac: 'F1:E2:D3:C4:B5:A7', lat: '15ms', status: 'secure', x: 0, y: 0, radius: 12 },
+            { id: 'EP-03', type: 'endpoint', ip: '10.0.2.201', mac: '99:88:77:66:55:44', lat: '999ms', status: 'breach', x: 0, y: 0, radius: 12 }, // Compromised node
+            { id: 'EP-04', type: 'endpoint', ip: '10.0.2.202', mac: '11:22:33:44:55:66', lat: '14ms', status: 'secure', x: 0, y: 0, radius: 12 },
+        ];
+
+        const links = [
+            { source: 0, target: 1 }, // Core to Alpha
+            { source: 0, target: 2 }, // Core to Beta
+            { source: 1, target: 3 }, // Alpha to EP-01
+            { source: 1, target: 4 }, // Alpha to EP-02
+            { source: 2, target: 5 }, // Beta to EP-03 (Breach)
+            { source: 2, target: 6 }  // Beta to EP-04
+        ];
+
+        let packets = []; // Stores traveling traffic packets
+
+        // Initialize layout
+        function initLayout() {
+            width = canvas.width = wrapper.clientWidth;
+            height = canvas.height = wrapper.clientHeight;
+            
+            // Scatter nodes aesthetically
+            nodes[0].x = width / 2; nodes[0].y = height / 2; // Center
+            nodes[1].x = width * 0.25; nodes[1].y = height * 0.3;
+            nodes[2].x = width * 0.75; nodes[2].y = height * 0.7;
+            nodes[3].x = width * 0.15; nodes[3].y = height * 0.15;
+            nodes[4].x = width * 0.1;  nodes[4].y = height * 0.45;
+            nodes[5].x = width * 0.85; nodes[5].y = height * 0.85;
+            nodes[6].x = width * 0.9;  nodes[6].y = height * 0.55;
+        }
+
+        window.addEventListener('resize', initLayout);
+        initLayout();
+
+        // --- Interaction Logic ---
+        let draggedNode = null;
+        let hoveredNode = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Check if clicking a node
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const node = nodes[i];
+                const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
+                if (dist <= node.radius + 10) {
+                    draggedNode = node;
+                    break;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (draggedNode) {
+                // Dragging
+                draggedNode.x = mouseX;
+                draggedNode.y = mouseY;
+            } else {
+                // Hover Detection
+                let foundHover = null;
+                for (let node of nodes) {
+                    const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
+                    if (dist <= node.radius + 5) {
+                        foundHover = node;
+                        break;
+                    }
+                }
+
+                if (foundHover !== hoveredNode) {
+                    hoveredNode = foundHover;
+                    updateInspector(hoveredNode);
+                    canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => { draggedNode = null; });
+        canvas.addEventListener('mouseleave', () => { draggedNode = null; hoveredNode = null; updateInspector(null); });
+
+        // Update UI Panel
+        function updateInspector(node) {
+            if (!node) {
+                inspDot.className = 'status-dot';
+                inspContent.innerHTML = '<div class="placeholder-text">HOVER OVER A NODE<br>TO EXTRACT TELEMETRY</div>';
+                return;
+            }
+
+            inspDot.className = `status-dot ${node.status}`;
+            const valClass = node.status === 'breach' ? 'data-value alert' : 'data-value';
+
+            inspContent.innerHTML = `
+                <div class="data-group">
+                    <span class="data-label">Node Identifier</span>
+                    <span class="${valClass}">${node.id} (${node.type.toUpperCase()})</span>
+                </div>
+                <div class="data-group">
+                    <span class="data-label">IPv4 Address</span>
+                    <span class="${valClass}">${node.ip}</span>
+                </div>
+                <div class="data-group">
+                    <span class="data-label">Hardware MAC</span>
+                    <span class="${valClass}">${node.mac}</span>
+                </div>
+                <div class="data-group">
+                    <span class="data-label">Ping Latency</span>
+                    <span class="${valClass}">${node.lat}</span>
+                </div>
+                <div class="data-group">
+                    <span class="data-label">Security State</span>
+                    <span class="${valClass}" style="text-transform: uppercase;">${node.status}</span>
+                </div>
+            `;
+        }
+
+        // --- Traffic Simulation Engine ---
+        function spawnPacket() {
+            // Pick a random link to send traffic across
+            if (Math.random() > 0.3) {
+                const link = links[Math.floor(Math.random() * links.length)];
+                const reverse = Math.random() > 0.5;
+                
+                packets.push({
+                    start: reverse ? nodes[link.target] : nodes[link.source],
+                    end: reverse ? nodes[link.source] : nodes[link.target],
+                    progress: 0,
+                    speed: (Math.random() * 0.015) + 0.01 // Random speed
+                });
+            }
+        }
+
+        // --- Render Loop ---
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Links
+            links.forEach(link => {
+                const n1 = nodes[link.source];
+                const n2 = nodes[link.target];
+                
+                ctx.beginPath();
+                ctx.moveTo(n1.x, n1.y);
+                ctx.lineTo(n2.x, n2.y);
+                
+                // If either end is breached, color the line red to show compromised flow
+                if (n1.status === 'breach' || n2.status === 'breach') {
+                    ctx.strokeStyle = 'rgba(139, 0, 0, 0.4)';
+                    ctx.lineWidth = 1.5;
+                } else {
+                    ctx.strokeStyle = 'var(--gold-dim)';
+                    ctx.lineWidth = 1;
+                }
+                ctx.stroke();
+            });
+
+            // 2. Draw Traveling Packets
+            for (let i = packets.length - 1; i >= 0; i--) {
+                const p = packets[i];
+                p.progress += p.speed;
+                
+                if (p.progress >= 1) {
+                    packets.splice(i, 1); // Packet arrived
+                    continue;
+                }
+
+                // Interpolate position
+                const px = p.start.x + (p.end.x - p.start.x) * p.progress;
+                const py = p.start.y + (p.end.y - p.start.y) * p.progress;
+
+                ctx.beginPath();
+                ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+                
+                // Color packet based on destination status
+                if (p.end.status === 'breach' || p.start.status === 'breach') {
+                    ctx.fillStyle = 'var(--rose-bright)';
+                    ctx.shadowColor = 'var(--rose-glow)';
+                } else {
+                    ctx.fillStyle = 'var(--gold)';
+                    ctx.shadowColor = 'var(--gold)';
+                }
+                
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.shadowBlur = 0; // Reset
+            }
+
+            // 3. Draw Nodes
+            nodes.forEach(node => {
+                const isHovered = (node === hoveredNode);
+                
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                
+                ctx.fillStyle = '#0a0a0a'; // Surface color
+                
+                if (node.status === 'breach') {
+                    ctx.strokeStyle = 'var(--rose-bright)';
+                    ctx.shadowColor = 'var(--rose-glow)';
+                    ctx.shadowBlur = isHovered ? 25 : 15;
+                    ctx.lineWidth = 2;
+                } else if (node.type === 'core') {
+                    ctx.strokeStyle = 'var(--gold)';
+                    ctx.shadowColor = 'var(--gold)';
+                    ctx.shadowBlur = isHovered ? 25 : 10;
+                    ctx.lineWidth = 2;
+                } else {
+                    ctx.strokeStyle = isHovered ? 'var(--text-main)' : 'var(--text-muted)';
+                    ctx.shadowBlur = 0;
+                    ctx.lineWidth = 1.5;
+                }
+                
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0; // Reset
+
+                // Inner detail circle
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = node.status === 'breach' ? 'var(--rose)' : (node.type === 'core' ? 'var(--gold)' : 'var(--text-muted)');
+                ctx.fill();
+
+                // Draw Text Label below node
+                ctx.font = '10px Courier New';
+                ctx.fillStyle = node.status === 'breach' ? 'var(--rose-bright)' : 'var(--text-muted)';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.id, node.x, node.y + node.radius + 15);
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        // Start loops
+        setInterval(spawnPacket, 150); // Spawn a packet every 150ms
+        draw();
+
+    </script>
+</body>
+</html>
